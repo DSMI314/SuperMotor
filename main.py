@@ -310,29 +310,29 @@ if __name__ == '__main__':
     """
     we consider larger peaks which occupy top (RATIO)%
     """
-    # preprocess peak
-    peakMeans = []
-    peakStds = []
-    for i in range(MODE):
-        # find peak
-        peaks = FindPeaksSorted(allTrainData[i])
-        peakMeans.append(np.mean(peaks))
-        peakStds.append(np.std(peaks))
     
     for i in range(MODE):
         print(' mode %d => mean = %.2f, std = %.2f' % (i, peakMeans[i], peakStds[i]))
     ##    DrawEnvelope(peakMeanCurves, peakStdCurves, labels, False) 
     ##    plt.savefig(figurePrefix + ('@ratio=%d' % RATIO))
-    """
-    for kMultiplier in range(5, 20 + 1, 1):
-        for percent in range(10, 50 + 1 , 10):
+
+    for percent in range(10, 50 + 1 , 10):
+        # preprocess peak
+        peakMeans = []
+        peakStds = []
+        for i in range(MODE):
+            # find peak
+            peaks = FindPeaksSorted(allTrainData[i], percent)
+            peakMeans.append(np.mean(peaks))
+            peakStds.append(np.std(peaks))    
+        for kMultiplier in range(5, 20 + 1, 1):
             for passRatio in range(5, 10 + 1, 1):
                 matrix = np.array(MakeFeatureMatrix(trainDataList, peakMeans, peakStds, percent, passRatio / 10.0, kMultiplier * 0.1))
                 
                 if Check(matrix):
                     print('stdMulti = %.1f, pick top %d percent peaks and %d%% hit ratio to succeed' % (kMultiplier * 0.1, percent, passRatio * 10))
                     print(matrix)
-    """
+    
     
     for i in range(MODE):
         print(Predict(allTestData[i],  peakMeans, peakStds))
