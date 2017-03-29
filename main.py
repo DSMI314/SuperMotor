@@ -175,14 +175,14 @@ def CalculateHitRatio(meanCurve, stdCurve, spotCurve):
 
 if __name__ == '__main__':
     
-    trainingFileList = ['0328_5_9600_d100_fan0',
+    trainFileList = ['0328_5_9600_d100_fan0',
                         '0328_5_9600_d100_fan1',
                         '0328_5_9600_d100_fan2',
                         '0328_5_9600_d100_fan3']
     
-    figurePrefix = '0328_1_9600_d100'
+    figurePrefix = '0328_5_9600_d100'
     
-    testingFileList = ['0328_2_9600_d100_fan0',
+    testFileList = ['0328_2_9600_d100_fan0',
                        '0328_2_9600_d100_fan1',
                        '0328_2_9600_d100_fan2',
                        '0328_2_9600_d100_fan3']
@@ -197,87 +197,82 @@ if __name__ == '__main__':
     stdCurves = []
         
     # preprocess
-    trainingDataList = [] 
-    testingDataList = []
+    trainDataList = []
+    testDataList = []
+    allTrainData = []
+    allTestData = []
+    ##DrawEnvelope(meanCurves, stdCurves, labels)
     
-   # DrawEnvelope(meanCurves, stdCurves, labels)
+    # read file   
     for i in range(MODE):
-        trainingData = Paging(Parse(trainingFileList[i], i))
-        testingData = Paging(Parse(testingFileList[i], i))
+        trainData = Parse(Read(trainFileList[i]))
+        testData = Parse(Read(testFileList[i]))
+        ##
+        allTrainData.append(trainData)
+        allTestData.append(testData)
+        ##
+        trainDataList.append(Paging(trainData))
+        testDataList.append(Paging(testData))
+
+    """
+    we consider larger peaks which occupy top (RATIO)%
+    """
+    RATIO = 50    
+    for ratio in range(10, 101, 10):
+        RATIO = ratio
+        # preprocess peak
+        peakMeans = []
+        peakStds = []
+        for i in range(MODE):
+            # find peak
+            peaks = []
+            pagesize = len(allTestData[i])
+            for j in range(1, pagesize - 1):
+                now = abs(allTestData[i][j])
+                prevv = abs(allTestData[i][j - 1])
+                nextt = abs(allTestData[i][j + 1])
+                # peak detect
+                if now > prevv and now > nextt:
+                    # stored absolute value
+                    peaks.extend(now)
+            
+            peaks.sort()
+            peaks.reverse()
+            peaks = peaks[:int(pagesize * RATIO / 100)]
+            
+            peakMeans.append(np.mean(peaks))
+            peakStds.append(np.std(peaks))
         
-        trainingDataList.append(trainingData)
-        testingDataList.append(testingData)
+        # draw peak
+        peakMeanCurves = []
+        peakStdCurves = []
+        for i in range(MODE):
+            peakMeanCurves.append(np.array([peakMeans[i] for _ in range(PAGESIZE)]))
+            peakStdCurves.append(np.array([peakStds[i] for _ in range(PAGESIZE)])) 
+            
+        DrawEnvelope(peakMeanCurves, peakStdCurves, labels, False) 
+        plt.savefig(figurePrefix + ('@ratio=%d' % RATIO))
     
-    trainingDataList2 = []     
-    for i in range(MODE):
-        trainingData = Paging(Parse(trainingFileList[i], i))
-        trainingDataList2.append(trainingData)
-    
-    DrawEnvelope2(trainingDataList2, labels)
 
     # create envelope
     for i in range(MODE):
-        meanCurve, stdCurve = CreateCurve(trainingDataList[i])
+        meanCurve, stdCurve = CreateCurve(trainDataList[i])
         meanCurves.append(meanCurve)
         stdCurves.append(stdCurve)
 
-    """
-    for i in range(MODE):
-        ratios = []
-        for j in range(len(testingDataList[i])):
-            hitRatio = CalculateHitRatio(meanCurves[i], stdCurves[i], testingDataList[i][j])
-            ratios.append(hitRatio)
-        print(('%d mode => ratios list =' % i) + str(ratios))
-    """
-    DrawEnvelope(meanCurves, stdCurves, labels) 
-    DrawEnvelope(meanCurves, stdCurves, labels, False) 
     
-    #plt.savefig(figurePrefix + ('@pagesize=%d' % pagesize))
+   ## peakMeanCurves = np.array(peakMeanCurves)
+   ## peakStdCurves = np.array(peakStdCurves)
+    
+    # draw
+   ## DrawEnvelope(meanCurves, stdCurves, labels) 
+   ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
+    
+    ## plt.savefig(figurePrefix + ('@pagesize=%d' % pagesize))
         
-    """    
-    factX = [[], [], [], []]
-    factY = [[], [], [], []]
-    # transform test data into sparse vector for 4 envelopes
-    for j in range(MODE):
-        for k in range(len(trainingDataList[j])):
-            for i in range(MODE):
-                vec = BuildSparseVector(meanCurves[i], stdCurves[i], trainingDataList[j][k])
-                factX[i].append(vec)
-                factY[i].append(j)
-    """
-    
-    """
-    # train !
-    svms = []   
-    for i in range(MODE):  
-        clf = SVC(C = 1000)
-        clf.fit(factX[i], factY[i])
-        svms.append(clf)
-    
-    predictX = [[], [], [], []]
-    predictY = [[], [], [], []]
-    
 
-    for j in range(MODE):
-        for k in range(len(testingDataList[j])):
-            for i in range(MODE):
-                vec = BuildSparseVector(meanCurves[i], stdCurves[i], testingDataList[j][k])
-                predictX[i].append(vec)
-                predictY[i].append(j)
-
-    for i in range(MODE):
-        print('Use %d-th SVM to predict j-th mode test data' % i)
-        for j in range(MODE):
-            print(svms[i].predict(predictX[j]))
-        
-    for i in range(MODE):
-        print('The fact of using %d-th SVM to predict j-th mode test data' % i)
-        for j in range(MODE):
-            print(predictY[j])    
-    """
-
-    DrawXYZ(trainingFileList)    
-   # DrawIndepenet(files)
-   # DrawMixed(data, files[0])                   
+   ## DrawXYZ(trainingFileList)    
+   ## DrawIndepenet(files)
+   ## DrawMixed(data, files[0])                   
     plt.show()   
     
