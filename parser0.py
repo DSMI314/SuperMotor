@@ -57,7 +57,7 @@ def GetPCA(records, n):
 def Read(file):
     records = np.array(LoadCSV(file))
     return records
-    
+
 def Parse(buffer):
     records = GetPCA(buffer, 1)
     return records
