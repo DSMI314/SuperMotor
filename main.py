@@ -42,6 +42,26 @@ def DrawIndepenet(files):
     
     ax[0].set_title('PCA of dataset')
 
+def DrawHitLineChart(X, yActive, yPassive, activeLabel):
+    fig, ax = plt.subplots()
+    plt.xlabel('kMultiplier')
+    plt.ylabel('meanHitRatio')
+    ax.plot(X, yActive, label = activeLabel)
+    ax.plot(X, yPassive, label = 'others')
+##    Draw(fig, ax, yActive, activeLabel)
+##s    Draw(fig, ax, yPassive, 'others')
+    ax.legend()
+    ax.set_title('Hit Ratios of %s and others (in model %s)' % (activeLabel, activeLabel))
+
+
+def DrawHitLineChart2(X, ys, labels, activeLabel):
+    fig, ax = plt.subplots()
+    plt.xlabel('kMultiplier')
+    plt.ylabel('meanHitRatio')
+    for j in range(MODE):
+        ax.plot(X, ys[j], label = labels[j])
+    ax.legend()
+    ax.set_title('Hit Ratios (in model %s)' % (activeLabel))
 
 def DrawMixed(data, labels):
     fig, ax = plt.subplots()
@@ -137,7 +157,7 @@ def DrawEnvelope2(trainingDataList, labels):
     XLABEL = 'timestamp'
     YLABEL = 'pca_value'
     TITLE = 'Envelope (mean +- ' + str(K) + ' std)'
-
+    
     meanCurves = []
     stdCurves = []
     for i in range(MODE):
@@ -163,8 +183,8 @@ def DrawEnvelope2(trainingDataList, labels):
         Fill(fig, ax, y1, y2, labels[i] + '_envelope')
         
     ax.legend()
-    
-    
+
+
 def BuildSparseVector(meanCurve, stdCurve, spotCurve):
     vec = []
     for i in range(len(meanCurve)):
@@ -211,6 +231,7 @@ def CalculateHitRatio2(mean, std, spotCurve, k = K):
             hitCount += 1
     return float(hitCount) / len(spotCurve)
 
+
 def Predict(data, peakMeans, peakStds, successRatio = SUCCESSRATIO):
     # preprocess peak
     peaks = FindPeaksSorted(data, 10)
@@ -226,9 +247,8 @@ def Predict(data, peakMeans, peakStds, successRatio = SUCCESSRATIO):
         if hitRatio >= successRatio:
             return i
     return None
-    
-    
-    
+
+
 def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRatio = PASSRATIO, kMultiplier = K):
     # calculate hit ratio for every mode which fit itself
     matrix = []
@@ -254,6 +274,11 @@ def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRati
         matrix.append(tmp)
     return matrix
 
+##def MakeHitLineChart(activeData, passiveData, peakMeans, peakStds, kMultiplier = K):
+##    for i in range(MODE):
+        
+    
+    
 def Check(matrix):
     ok = True
     for i in range(MODE):
@@ -266,25 +291,17 @@ def Check(matrix):
                 break
     return ok
             
-            
-if __name__ == '__main__':
-    
-    trainFileList = ['0328_5_9600_d100_fan0',
-                        '0328_5_9600_d100_fan1',
-                        '0328_5_9600_d100_fan2',
-                        '0328_5_9600_d100_fan3']
-    
-    figurePrefix = '0328_5_9600_d100'
-    
-    testFileList = ['0328_2_9600_d100_fan0',
-                       '0328_2_9600_d100_fan1',
-                       '0328_2_9600_d100_fan2',
-                       '0328_2_9600_d100_fan3']
-    
+def Run(trainPrefix, testPrefix):
     labels = ['fan0',
               'fan1',
               'fan2',
               'fan3']
+    trainFileList = []
+    testFileList = []
+    for i in range(MODE):
+        trainFileList.append(trainPrefix + '_' + labels[i])
+        testFileList.append(testPrefix + '_' + labels[i])
+        
     
     meanCurves = []
     stdCurves = []
@@ -311,29 +328,54 @@ if __name__ == '__main__':
     we consider larger peaks which occupy top (RATIO)%
     """
     
-    for i in range(MODE):
-        print(' mode %d => mean = %.2f, std = %.2f' % (i, peakMeans[i], peakStds[i]))
+  ##  for i in range(MODE):
+  ##      print(' mode %d => mean = %.2f, std = %.2f' % (i, peakMeans[i], peakStds[i]))
     ##    DrawEnvelope(peakMeanCurves, peakStdCurves, labels, False) 
     ##    plt.savefig(figurePrefix + ('@ratio=%d' % RATIO))
 
-    for percent in range(10, 50 + 1 , 10):
-        # preprocess peak
-        peakMeans = []
-        peakStds = []
-        for i in range(MODE):
-            # find peak
-            peaks = FindPeaksSorted(allTrainData[i], percent)
-            peakMeans.append(np.mean(peaks))
-            peakStds.append(np.std(peaks))    
-        for kMultiplier in range(5, 20 + 1, 1):
-            for passRatio in range(5, 10 + 1, 1):
-                matrix = np.array(MakeFeatureMatrix(trainDataList, peakMeans, peakStds, percent, passRatio / 10.0, kMultiplier * 0.1))
-                
-                if Check(matrix):
-                    print('stdMulti = %.1f, pick top %d percent peaks and %d%% hit ratio to succeed' % (kMultiplier * 0.1, percent, passRatio * 10))
-                    print(matrix)
+    # preprocess peak
+    peakMeans = []
+    peakStds = []
+    for i in range(MODE):
+        # find peak
+        peaks = FindPeaksSorted(allTrainData[i])
+        peakMeans.append(np.mean(peaks))
+        peakStds.append(np.std(peaks))
+
+    peaksList = []    
+    for i in range(MODE):
+        peakList = []
+        for k in range(len(trainDataList[i])):
+            peaks = FindPeaksSorted(trainDataList[i][k])
+            peakList.append(peaks)
+        peaksList.append(peakList)
     
-    
+    for i in range(MODE):            
+        X = []
+        ys = []
+
+        for k0 in range(5, 100+1, 1):
+            kMulti = k0 / 10.0
+            X.append(kMulti)
+        for j in range(MODE):
+            y = []
+            for k0 in range(5, 100+1, 1):
+                kMulti = k0 / 10.0
+            
+                hitRatios = []
+                for k in range(len(peaksList[j])):
+                    hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
+                    hitRatios.append(hitRatio)
+                hitRatios = np.array(hitRatios)
+                y.append(np.mean(hitRatios))
+            ys.append(y)
+        print(X)
+        print(ys)
+        DrawHitLineChart2(X, ys, labels, labels[i])
+        plt.savefig(trainPrefix + ('@model=%d' % i))    
+                        
+            
+            
     for i in range(MODE):
         print(Predict(allTestData[i],  peakMeans, peakStds))
         # now at mode i
@@ -341,7 +383,9 @@ if __name__ == '__main__':
         result = []
         for j in range(len(testDataList[i])):
             result.append(Predict(testDataList[i][j], peakMeans, peakStds))
-        print(result)                
+        print(result)
+        
+        
     # create envelope
     for i in range(MODE):
         meanCurve, stdCurve = CreateCurve(trainDataList[i])
@@ -360,6 +404,16 @@ if __name__ == '__main__':
 
    ## DrawXYZ(trainingFileList)    
    ## DrawIndepenet(files)
-   ## DrawMixed(data, files[0])                   
-    plt.show()   
+   ## DrawMixed(data, files[0])               
+    plt.show()       
+    
+    
+if __name__ == '__main__':
+    Run('0328_2_9600_d100', '0328_2_9600_d100')
+    Run('0328_3_9600_d100', '0328_2_9600_d100')
+    Run('0328_4_9600_d100', '0328_2_9600_d100')
+    Run('0328_5_9600_d100', '0328_2_9600_d100')
+    Run('0329_1', '0328_2_9600_d100')
+    Run('0329_2', '0328_2_9600_d100')
+    
     

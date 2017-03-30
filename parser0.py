@@ -7,7 +7,7 @@ from sklearn import datasets
 """
 Given filelist, this class could parse them.
 """
-PAGESIZE = 100
+PAGESIZE = 1500
         
 def LoadCSV(filename):
     """
