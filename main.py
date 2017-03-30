@@ -26,21 +26,6 @@ def Fill(fig, ax, minX, maxX, label0):
     y2 = maxX
     ax.fill_between(x, y1, y2, label=label0, facecolor='gray')
 #####################################################################################
-    
-def DrawIndepenet(files):
-    fig, ax = plt.subplots(len(files), sharex = True, sharey = True)
-    plt.xlim(0, 3000)
-    #plt.ylim(-100, 100)
-    plt.xlabel('timestamp');
-    plt.ylabel('pca_value');
-    for i in range(len(files)):
-        file = files[i]
-        records = LoadCSV(file)
-        records = GetPCA(records, 1)
-        Draw(fig, ax[i], records, file)
-        ax[i].legend()    
-    
-    ax[0].set_title('PCA of dataset')
 
 def DrawHitLineChart(X, yActive, yPassive, activeLabel):
     fig, ax = plt.subplots()
@@ -65,64 +50,6 @@ def DrawHitLineChart2(X, ys, labels, activeLabel):
     ax.set_title('Hit Ratios (in model %s)' % (activeLabel))
     
     
-
-def DrawMixed(data, labels):
-    fig, ax = plt.subplots()
-    #plt.ylim(-100, 100)
-    plt.xlabel('timestamp');
-    plt.ylabel('pca_value');
-    for i in range(len(data)):
-        Draw(fig, ax, data[i], labels)
-        
-    ax.legend()      
-    ax.set_title('PCA of dataset')
-
-
-def DrawXYZ(files):
-    fig, ax = plt.subplots(3, sharex = True)
-    plt.xlim(0, 3000)
-   # plt.ylim(-100, 100)
-    plt.xlabel('timestamp');
-    plt.ylabel('acce');
-    ax[0].set_title('original dataset')
-    for i in range(len(files)):
-        file = files[i]
-        records = LoadCSV(file)
-        
-        xs, ys, zs = [], [], []
-        for (x,y,z) in records:
-            xs.append(x)
-            ys.append(y)
-            zs.append(z)
-        Draw(fig, ax[0], xs, file + '_X')
-        Draw(fig, ax[1], ys, file + '_Y')
-        Draw(fig, ax[2], zs, file + '_Z')
-
-    ax[0].legend()     
-    ax[1].legend()  
-    ax[2].legend()  
-
-
-def CreateCurve(data):
-    meanCurve = []
-    stdCurve = []
-    
-    length = range(len(data[0]))
-
-    for j in length:
-        group = []
-        for i in range(len(data)):
-            group.append(data[i][j])
-        group = np.array(group)
-        meanCurve.append(np.mean(group))
-        stdCurve.append(np.std(group))
-        
-    meanCurve = np.array(meanCurve)
-    stdCurve = np.array(stdCurve)
-    
-    return meanCurve, stdCurve
-
-
 def DrawEnvelope(meanCurves, stdCurves, labels, independent = True):
     XLABEL = 'timestamp'
     YLABEL = 'pca_value'
@@ -155,7 +82,38 @@ def DrawEnvelope(meanCurves, stdCurves, labels, independent = True):
             Fill(fig, ax, y1, y2, labels[i] + '_envelope')
         ax.legend()
 
+def DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels):
+    XLABEL = 'timeStamp'
+    YLABEL = 'PCA_value'
+    TITLE = 'Envelope'
 
+
+    fig, ax = plt.subplots()
+    plt.xlabel(XLABEL)
+    plt.ylabel(YLABEL)
+    ax.set_title(TITLE)    
+    
+    colors = ['blue', 'orange', 'green', 'red']
+    for i in range(MODE):
+        x = np.arange(0, PAGESIZE)
+        y = [peakMeans[i] for _ in range(PAGESIZE)]
+        ax.plot(x, y, label = labels[i] + '_peak', color = 'gray')    
+        
+        x = np.arange(0, PAGESIZE)
+        y = [valeyMeans[i] for _ in range(PAGESIZE)]
+        ax.plot(x, y, label = labels[i] + '_valey', color = 'gray') 
+        
+        y1 = [peakMeans[i] - peakKX[i] * peakStds[i] for _ in range(PAGESIZE)]
+        y2 = [peakMeans[i] + peakKX[i] * peakStds[i] for _ in range(PAGESIZE)]
+        ax.fill_between(x, y1, y2, label = labels[i] + '_envelope', facecolor = colors[i])
+        
+        y1 = [valeyMeans[i] - valeyKX[i] * valeyStds[i] for _ in range(PAGESIZE)]
+        y2 = [valeyMeans[i] + valeyKX[i] * valeyStds[i] for _ in range(PAGESIZE)]
+        ax.fill_between(x, y1, y2, label = labels[i] + '_envelope', facecolor = colors[i])
+        
+    ax.legend()    
+    
+    
 def DrawEnvelope2(trainingDataList, labels):
     XLABEL = 'timestamp'
     YLABEL = 'pca_value'
@@ -172,8 +130,8 @@ def DrawEnvelope2(trainingDataList, labels):
         
     fig, ax = plt.subplots()
 
-    plt.xlabel(XLABEL);
-    plt.ylabel(YLABEL);
+    plt.xlabel(XLABEL)
+    plt.ylabel(YLABEL)
     ax.set_title(TITLE)
     
     for i in range(len(meanCurves)):
@@ -187,26 +145,29 @@ def DrawEnvelope2(trainingDataList, labels):
         
     ax.legend()
 
-
-def BuildSparseVector(meanCurve, stdCurve, spotCurve):
-    vec = []
-    for i in range(len(meanCurve)):
-        if spotCurve[i] > meanCurve[i] + K * stdCurve[i]:
-            vec.append(1)
-        elif spotCurve[i] < meanCurve[i] - K * stdCurve[i]:
-            vec.append(-1)
-        else:
-            vec.append(0)
-    return vec
-
+def FindValeysSorted(X, RATIO = 10):
+    valeys = []
+    pagesize = len(X)
+    for j in range(1, pagesize - 1):
+        now = X[j]
+        prevv = X[j - 1]
+        nextt = X[j + 1]
+        #valey detect
+        if now < prevv and now < nextt:
+            valeys.extend(now)
+            
+    valeys.sort()
+    valeys = valeys[:int(pagesize * RATIO / 100)]
+    
+    return valeys
 
 def FindPeaksSorted(X, RATIO = 10):
     peaks = []
     pagesize = len(X)
     for j in range(1, pagesize - 1):
-        now = abs(X[j])
-        prevv = abs(X[j - 1])
-        nextt = abs(X[j + 1])
+        now = X[j]
+        prevv = X[j - 1]
+        nextt = X[j + 1]
         # peak detect
         if now > prevv and now > nextt:
             # stored absolute value
@@ -219,104 +180,26 @@ def FindPeaksSorted(X, RATIO = 10):
     return peaks
 
 
-def CalculateHitRatio(meanCurve, stdCurve, spotCurve):
-    hitCount = 0
-    for i in range(len(meanCurve)):
-        if abs(spotCurve[i] - meanCurve[i]) <= K * stdCurve[i]:
-            hitCount += 1
-    return float(hitCount) / len(meanCurve)
-
-
-def CalculateHitRatio2(mean, std, spotCurve, k = K):
+def CalculateHitRatio(mean, std, spotCurve, k = K):
     hitCount = 0
     for i in range(len(spotCurve)):
         if abs(spotCurve[i] - mean) <= k * std:
             hitCount += 1
     return float(hitCount) / len(spotCurve)
 
-PEAKMEANS = []
-PEAKSTDS = []
-KX = []
 
-def Predict(data, peakMeans = PEAKMEANS, peakStds = PEAKSTDS, kX = KX, successRatio = SUCCESSRATIO):
-    # preprocess peak
-    peaks = FindPeaksSorted(data, 10)
-   ## print('peak = ' + str(peaks))
-    tmps = []
-    for i in range(MODE):
-        hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaks, kX[i])
-        tmps.append([hitRatio, i])
-    
-    return max(tmps)[1]
-
-def _Predict(buffer):
-    data = Parse(buffer, 1)
-    return Predict(data)
-
-def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRatio = PASSRATIO, kMultiplier = K):
-    # calculate hit ratio for every mode which fit itself
-    matrix = []
-    for i in range(MODE):
-        tmp = []
-        for j in range(MODE):
-            hitRatios = []
-            for k in range(len(dataList[j])):
-                peaks = FindPeaksSorted(dataList[j][k], percent)
-                hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaks, kMultiplier)
-                hitRatios.append(hitRatio)
-                
-           ## print('Put mode %d into model %d to get hitRatio' % (j, i))
-            ##print(hitRatios)
-            
-            #score
-            score = 0
-            for a in range(len(hitRatios)):
-                if hitRatios[a] > passRatio:
-                    score += 1.0
-            score /= len(hitRatios)            
-            tmp.append(score)
-        matrix.append(tmp)
-    return matrix
-
-def Train(trainData):
-    """
-    we consider larger peaks which occupy top (RATIO)%
-    """
-
-    # preprocess
-    trainDataList = []
-    for i in range(MODE):
-        trainDataList.append(Paging(trainData[i]))
-    
-    # preprocess peak
-    peakMeans = []
-    peakStds = []
-    for i in range(MODE):
-        # find peak
-        peaks = FindPeaksSorted(trainData[i])
-        peakMeans.append(np.mean(peaks))
-        peakStds.append(np.std(peaks))
-
-    peaksList = []    
-    for i in range(MODE):
-        peakList = []
-        for k in range(len(trainDataList[i])):
-            peaks = FindPeaksSorted(trainDataList[i][k])
-            peakList.append(peaks)
-        peaksList.append(peakList)
-    
-    # find the best K for every mode, and put into kX
+def FindKX(means, stds, spotList):
     kX = []
     for i in range(MODE):
         tmps = []
 
-        for k0 in range(5, 100+1, 1):  
+        for k0 in range(5, 100+1, 1):
             kMulti = k0 * 0.1
             h = [] # list of tuple(h0, h1, h2, h3)
             for j in range(MODE):
                 hitRatios = []
-                for k in range(len(peaksList[j])):
-                    hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
+                for k in range(len(spotList[j])):
+                    hitRatio = CalculateHitRatio(means[i], stds[i], spotList[j][k], kMulti)
                     hitRatios.append(hitRatio)
                 hitRatios = np.array(hitRatios)
                 h.append(np.mean(hitRatios))
@@ -329,16 +212,97 @@ def Train(trainData):
             if len(gaps) > 0:
                 tmps.append([min(gaps), kMulti])
         
+  ##      print(tmps)
         nowMax = 0
         nowK = 0
         for k1 in range(len(tmps)):
             if tmps[k1][0] > nowMax:
                 nowMax, nowK = tmps[k1][0], tmps[k1][1]
                 
-        kX.append(nowK)
-                
-    return (peakMeans, peakStds, kX)
-  
+        kX.append(nowK)    
+    return kX
+        
+        
+def Train(trainData):
+    """
+    we consider larger peaks which occupy top (RATIO)%
+    """
+
+    # preprocess
+    trainDataList = []
+    for i in range(MODE):
+        trainDataList.append(Paging(trainData[i]))
+    
+    # preprocess peak and valey
+    peakMeans = []
+    peakStds = []
+    
+    valeyMeans = []
+    valeyStds = []
+    for i in range(MODE):
+        # find peak
+        peaks = FindPeaksSorted(trainData[i])
+        peakMeans.append(np.mean(peaks))
+        peakStds.append(np.std(peaks))
+        
+        valeys = FindValeysSorted(trainData[i])
+        valeyMeans.append(np.mean(valeys))
+        valeyStds.append(np.std(valeys))
+    
+
+    peaksList = []  
+    valeysList = []
+    for i in range(MODE):
+        peakList = []
+        valeyList = []
+        for k in range(len(trainDataList[i])):
+            peaks = FindPeaksSorted(trainDataList[i][k])
+            valeys = FindValeysSorted(trainDataList[i][k])
+            
+            peakList.append(peaks)
+            valeyList.append(valeys)
+            
+        peaksList.append(peakList)
+        valeysList.append(valeyList)
+    
+    # find the best K for every mode, and put into kX
+    peakKX = FindKX(peakMeans, peakStds, peaksList)
+    valeyKX = FindKX(valeyMeans, valeyStds, valeysList)
+    
+    return (peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
+
+
+def Predict(data, peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX):
+    # preprocess peak
+    peaks = FindPeaksSorted(data, 10)
+    valeys = FindValeysSorted(data, 10)
+    
+    tmps = []
+    for i in range(MODE):
+        hitPeakRatio = CalculateHitRatio(peakMeans[i], peakStds[i], peaks, peakKX[i])
+        hitValeyRatio = CalculateHitRatio(valeyMeans[i], valeyStds[i], valeys, valeyKX[i])
+        tmps.append([(hitPeakRatio + hitValeyRatio) / 2.0, i])
+    
+    return max(tmps)[1]
+
+
+def WriteByLine(fpp, X):
+    for i in range(MODE):
+        fpp.write(str(X[i]))
+        if i < MODE - 1:
+            fpp.write(',')
+        else:
+            fpp.write('\n')
+    
+def WriteToFile(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX):
+    fpp = open('motorcycle.txt', 'w')
+    WriteByLine(fpp, peakMeans)
+    WriteByLine(fpp, peakStds)
+    WriteByLine(fpp, peakKX)
+    WriteByLine(fpp, valeyMeans)
+    WriteByLine(fpp, valeyStds)
+    WriteByLine(fpp, valeyKX)
+    fpp.close()    
     
 def Run(trainPrefix, testPrefix):
     labels = ['fan0',
@@ -370,85 +334,9 @@ def Run(trainPrefix, testPrefix):
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
     
-    peakMeans, peakStds, kX = Train(allTrainData)
+    peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX = Train(allTrainData)
+    WriteToFile(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
     
-    fpp = open('motorcycle.txt', 'w')
-    for i in range(MODE):
-        fpp.write(str(peakMeans[i]))
-        if i < MODE - 1:
-            fpp.write(',')
-        else:
-            fpp.write('\n')
-            
-    for i in range(MODE):
-        fpp.write(str(peakStds[i]))
-        if i < MODE - 1:
-            fpp.write(',')
-        else:
-            fpp.write('\n')
-            
-    for i in range(MODE):
-        fpp.write(str(kX[i]))
-        if i < MODE - 1:
-            fpp.write(',')
-        else:
-            fpp.write('\n')
-    fpp.close()    
-    
-    PEAKMEANS = peakMeans
-    PEAKSTDS = peakStds
-    KX = kX
-    
-##    print(trainPrefix)
-##    print(peakMeans)
-##    print(peakStds)
-##    print(kX)
-    
-    """
-    # preprocess peak
-    peakMeans = []
-    peakStds = []
-    for i in range(MODE):
-        # find peak
-        peaks = FindPeaksSorted(allTrainData[i])
-        peakMeans.append(np.mean(peaks))
-        peakStds.append(np.std(peaks))
-
-    peaksList = []    
-    for i in range(MODE):
-        peakList = []
-        for k in range(len(trainDataList[i])):
-            peaks = FindPeaksSorted(trainDataList[i][k])
-            peakList.append(peaks)
-        peaksList.append(peakList)
-        
-    
-    for i in range(MODE):            
-        X = []
-        ys = []
-
-        for k0 in range(5, 100+1, 1):
-            kMulti = k0 / 10.0
-            X.append(kMulti)
-        for j in range(MODE):
-            y = []
-            for k0 in range(5, 100+1, 1):
-                kMulti = k0 / 10.0
-            
-                hitRatios = []
-                for k in range(len(peaksList[j])):
-                    hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
-                    hitRatios.append(hitRatio)
-                hitRatios = np.array(hitRatios)
-                y.append(np.mean(hitRatios))
-            ys.append(y)
-       ## print(X)
-      ##  print(ys)
-        
-        DrawHitLineChart2(X, ys, labels, labels[i])     
-        plt.savefig(trainPrefix + ('@model=%d&pagesize=%d' % (i, PAGESIZE)))  
-    """
-
     
     for i in range(MODE):
         # now at mode i
@@ -457,10 +345,10 @@ def Run(trainPrefix, testPrefix):
         result = []
         ##print(testDataList[i])
         for j in range(len(testDataList[i])):
-            result.append(Predict(testDataList[i][j], peakMeans, peakStds, kX))
+            result.append(Predict(testDataList[i][j], peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX))
         print(result)
-    
-    
+        
+    DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels)
     # draw
    ## DrawEnvelope(meanCurves, stdCurves, labels) 
    ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
@@ -471,20 +359,22 @@ def Run(trainPrefix, testPrefix):
    ## DrawXYZ(trainingFileList)    
    ## DrawIndepenet(files)
    ## DrawMixed(data, files[0])               
-   ## plt.show()       
+    plt.show()       
     
     
 if __name__ == '__main__':
-    Run('0328_2_9600_d100', '0328_2_9600_d100')
-    Run('0328_2_9600_d100', '0328_3_9600_d100')
-    Run('0328_2_9600_d100', '0328_4_9600_d100')
-    Run('0328_2_9600_d100', '0328_5_9600_d100')
+##    Run('0328_2_9600_d100', '0328_2_9600_d100')
+##    Run('0328_2_9600_d100', '0328_3_9600_d100')
+##    Run('0328_2_9600_d100', '0328_4_9600_d100')
+##    Run('0328_2_9600_d100', '0328_5_9600_d100')
    ## Run('0328_3_9600_d100', '0328_3_9600_d100')
    ## Run('0328_4_9600_d100', '0328_4_9600_d100')
    ## Run('0328_5_9600_d100', '0328_5_9600_d100')
     
-    Run('0329_1', '0329_1')
-    Run('0329_2', '0329_2')
+ ##   Run('0329_1', '0329_1')
+ ##   Run('0329_2', '0329_2')
+    
+    Run('0330_2', '0330_2')
     
     
     

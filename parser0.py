@@ -25,7 +25,7 @@ def LoadCSV(filename):
         if len(items) > 3:
             z = items[3]
             
-        values = [x, 0, z]
+        values = [0, y, z]
         records.append(values)
 
     # Discard front data which may be noisy
@@ -59,6 +59,8 @@ def Read(file):
     return records
 
 def Parse(buffer):
+    for k in range(len(buffer)):
+        buffer[k][0] = 0.0
     records = GetPCA(buffer, 1)
     return records
 
