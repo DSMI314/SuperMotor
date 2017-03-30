@@ -7,7 +7,7 @@ from sklearn import datasets
 """
 Given filelist, this class could parse them.
 """
-PAGESIZE = 100
+PAGESIZE = 1500
         
 def LoadCSV(filename):
     """
@@ -48,17 +48,18 @@ def LoadCSV(filename):
     return records
 
 
-def GetPCA(records, n, mode):
+def GetPCA(records, n):
     pca = decomposition.PCA(n_components = 1)
     pca.fit(records)
     records = pca.transform(records)
     return records
-    
-    
-def Parse(file, mode):
+
+def Read(file):
     records = np.array(LoadCSV(file))
-    records = GetPCA(records, 1, mode)
-        
+    return records
+
+def Parse(buffer):
+    records = GetPCA(buffer, 1)
     return records
 
 def Paging(buffer, pagesize = PAGESIZE):
