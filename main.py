@@ -54,6 +54,7 @@ def DrawHitLineChart(X, yActive, yPassive, activeLabel):
     ax.set_title('Hit Ratios of %s and others (in model %s)' % (activeLabel, activeLabel))
 
 
+
 def DrawHitLineChart2(X, ys, labels, activeLabel):
     fig, ax = plt.subplots()
     plt.xlabel('kMultiplier')
@@ -62,6 +63,8 @@ def DrawHitLineChart2(X, ys, labels, activeLabel):
         ax.plot(X, ys[j], label = labels[j])
     ax.legend()
     ax.set_title('Hit Ratios (in model %s)' % (activeLabel))
+    
+    
 
 def DrawMixed(data, labels):
     fig, ax = plt.subplots()
@@ -377,6 +380,41 @@ def Run(trainPrefix, testPrefix):
             
             
     for i in range(MODE):
+        activeList = []
+        passiveList = []
+        for j in range(MODE):
+            if i == j:
+                activeList.extend(peaksList[j])
+            else:
+                passiveList.extend(peaksList[j])
+            
+        X = []
+        yActive = []
+        yPassive = []
+        for k0 in range(5, 100+1, 1):
+            kMulti = k0 / 10.0
+            X.append(kMulti)
+            
+            hitRatiosActive = []
+            for k in range(len(activeList)):
+                hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], activeList[k], kMulti)
+                hitRatiosActive.append(hitRatio)
+            hitRatiosActive = np.array(hitRatiosActive)
+            yActive.append(np.mean(hitRatiosActive))
+
+            hitRatiosPassive = []        
+            for k in range(len(passiveList)):
+                hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], passiveList[k], kMulti)
+                hitRatiosPassive.append(hitRatio)
+            hitRatiosPassive = np.array(hitRatiosPassive)
+            yPassive.append(np.mean(hitRatiosPassive))
+            
+        DrawHitLineChart(X, yActive, yPassive, labels[i])
+        plt.savefig(trainPrefix + ('@model=%d' % i))    
+                        
+            
+            
+    for i in range(MODE):
         print(Predict(allTestData[i],  peakMeans, peakStds))
         # now at mode i
         print('now at mode %d' % i)
@@ -405,7 +443,7 @@ def Run(trainPrefix, testPrefix):
    ## DrawXYZ(trainingFileList)    
    ## DrawIndepenet(files)
    ## DrawMixed(data, files[0])               
-    plt.show()       
+   ## plt.show()       
     
     
 if __name__ == '__main__':
@@ -413,7 +451,9 @@ if __name__ == '__main__':
     Run('0328_3_9600_d100', '0328_2_9600_d100')
     Run('0328_4_9600_d100', '0328_2_9600_d100')
     Run('0328_5_9600_d100', '0328_2_9600_d100')
+    
     Run('0329_1', '0328_2_9600_d100')
     Run('0329_2', '0328_2_9600_d100')
+    
     
     
