@@ -47,7 +47,7 @@ def DrawHitLineChart2(X, ys, labels, activeLabel):
     for j in range(MODE):
         ax.plot(X, ys[j], label = labels[j])
     ax.legend()
-    ax.set_title('Hit Ratios (in model %s)' % (activeLabel))
+    ax.set_title('Hit Ratios (for peaks in model %s)' % (activeLabel))
     
     
 def DrawEnvelope(meanCurves, stdCurves, labels, independent = True):
@@ -249,7 +249,6 @@ def Train(trainData):
         valeyMeans.append(np.mean(valeys))
         valeyStds.append(np.std(valeys))
     
-
     peaksList = []  
     valeysList = []
     for i in range(MODE):
@@ -264,7 +263,38 @@ def Train(trainData):
             
         peaksList.append(peakList)
         valeysList.append(valeyList)
-    
+        
+############################
+    trainPrefix = '0330_2'
+    labels = ['fan0',
+              'fan1',
+              'fan2',
+              'fan3']            
+    for i in range(MODE):            
+        X = []
+        ys = []
+        for k0 in range(5, 100+1, 1):
+            kMulti = k0 / 10.0
+            X.append(kMulti)
+        for j in range(MODE):
+            y = []
+            for k0 in range(5, 100+1, 1):
+                kMulti = k0 / 10.0
+            
+                hitRatios = []
+                for k in range(len(peaksList[j])):
+                    hitRatio = CalculateHitRatio(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
+                    hitRatios.append(hitRatio)
+                hitRatios = np.array(hitRatios)
+                y.append(np.mean(hitRatios))
+            ys.append(y)
+       ## print(X)
+      ##  print(ys)
+        
+        DrawHitLineChart2(X, ys, labels, labels[i])     
+        plt.savefig(trainPrefix + ('@peak&model=%d&pagesize=%d' % (i, PAGESIZE)))            
+                
+####################################
     # find the best K for every mode, and put into kX
     peakKX = FindKX(peakMeans, peakStds, peaksList)
     valeyKX = FindKX(valeyMeans, valeyStds, valeysList)
@@ -336,8 +366,10 @@ def Run(trainPrefix, testPrefix):
     
     peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX = Train(allTrainData)
     WriteToFile(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
-    
-    
+  
+    """
+    predict
+    """
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
@@ -348,17 +380,8 @@ def Run(trainPrefix, testPrefix):
             result.append(Predict(testDataList[i][j], peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX))
         print(result)
         
-    DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels)
-    # draw
-   ## DrawEnvelope(meanCurves, stdCurves, labels) 
-   ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
+##    DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels)
     
-    ## plt.savefig(figurePrefix + ('@pagesize=%d' % pagesize))
-        
-
-   ## DrawXYZ(trainingFileList)    
-   ## DrawIndepenet(files)
-   ## DrawMixed(data, files[0])               
     plt.show()       
     
     
