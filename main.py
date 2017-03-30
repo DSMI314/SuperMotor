@@ -211,7 +211,7 @@ def FindPeaksSorted(X, RATIO = 10):
         if now > prevv and now > nextt:
             # stored absolute value
             peaks.extend(now)
-            
+    
     peaks.sort()
     peaks.reverse()
     peaks = peaks[:int(pagesize * RATIO / 100)]
@@ -235,21 +235,16 @@ def CalculateHitRatio2(mean, std, spotCurve, k = K):
     return float(hitCount) / len(spotCurve)
 
 
-def Predict(data, peakMeans, peakStds, successRatio = SUCCESSRATIO):
+def Predict(data, peakMeans, peakStds, kX, successRatio = SUCCESSRATIO):
     # preprocess peak
     peaks = FindPeaksSorted(data, 10)
-    peakMean = np.mean(peaks)
-    peakStd = np.std(peaks)
-    
    ## print('peak = ' + str(peaks))
-    hitRatios = []
+    tmps = []
     for i in range(MODE):
-        hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaks)
-        hitRatios.append(hitRatio)
-   ## print(hitRatios)
-        if hitRatio >= successRatio:
-            return i
-    return None
+        hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaks, kX[i])
+        tmps.append([hitRatio, i])
+    
+    return max(tmps)[1]
 
 
 def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRatio = PASSRATIO, kMultiplier = K):
@@ -277,44 +272,85 @@ def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRati
         matrix.append(tmp)
     return matrix
 
-##def MakeHitLineChart(activeData, passiveData, peakMeans, peakStds, kMultiplier = K):
-##    for i in range(MODE):
-        
-    
-    
-def Check(matrix):
-    ok = True
+def Train(trainData):
+    """
+    we consider larger peaks which occupy top (RATIO)%
+    """
+
+    # preprocess
+    trainDataList = []
     for i in range(MODE):
-        for j in range(MODE):
-            if i < j and matrix[i][j] >= SUCCESSRATIO:
-                ok = False
-                break
-            if i == j and matrix[i][j] <= SUCCESSRATIO:
-                ok = False
-                break
-    return ok
-            
+        trainDataList.append(Paging(trainData[i]))
+    
+    # preprocess peak
+    peakMeans = []
+    peakStds = []
+    for i in range(MODE):
+        # find peak
+        peaks = FindPeaksSorted(trainData[i])
+        peakMeans.append(np.mean(peaks))
+        peakStds.append(np.std(peaks))
+
+    peaksList = []    
+    for i in range(MODE):
+        peakList = []
+        for k in range(len(trainDataList[i])):
+            peaks = FindPeaksSorted(trainDataList[i][k])
+            peakList.append(peaks)
+        peaksList.append(peakList)
+    
+    # find the best K for every mode, and put into kX
+    kX = []
+    for i in range(MODE):
+        tmps = []
+
+        for k0 in range(5, 100+1, 1):  
+            kMulti = k0 * 0.1
+            h = [] # list of tuple(h0, h1, h2, h3)
+            for j in range(MODE):
+                hitRatios = []
+                for k in range(len(peaksList[j])):
+                    hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
+                    hitRatios.append(hitRatio)
+                hitRatios = np.array(hitRatios)
+                h.append(np.mean(hitRatios))
+
+            gaps = []
+            for j in range(MODE):
+                if i != j:
+                    gaps.append(h[i] - h[j])
+
+            if len(gaps) > 0:
+                tmps.append([min(gaps), kMulti])
+        
+        nowMax = 0
+        nowK = 0
+        for k1 in range(len(tmps)):
+            if tmps[k1][0] > nowMax:
+                nowMax, nowK = tmps[k1][0], tmps[k1][1]
+                
+        kX.append(nowK)
+                
+    return (peakMeans, peakStds, kX)
+    
 def Run(trainPrefix, testPrefix):
     labels = ['fan0',
               'fan1',
               'fan2',
               'fan3']
+    
     trainFileList = []
     testFileList = []
     for i in range(MODE):
         trainFileList.append(trainPrefix + '_' + labels[i])
         testFileList.append(testPrefix + '_' + labels[i])
-        
     
-    meanCurves = []
-    stdCurves = []
-
     # preprocess
     trainDataList = []
     testDataList = []
     allTrainData = []
     allTestData = []
-    ##DrawEnvelope(meanCurves, stdCurves, labels)
+    
     
     # read file   
     for i in range(MODE):
@@ -326,16 +362,14 @@ def Run(trainPrefix, testPrefix):
         ##
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
-
-    """
-    we consider larger peaks which occupy top (RATIO)%
-    """
     
-  ##  for i in range(MODE):
-  ##      print(' mode %d => mean = %.2f, std = %.2f' % (i, peakMeans[i], peakStds[i]))
-    ##    DrawEnvelope(peakMeanCurves, peakStdCurves, labels, False) 
-    ##    plt.savefig(figurePrefix + ('@ratio=%d' % RATIO))
-
+    peakMeans, peakStds, kX = Train(allTrainData)
+    print(trainPrefix)
+    print(peakMeans)
+    print(peakStds)
+    print(kX)
+    
+    """
     # preprocess peak
     peakMeans = []
     peakStds = []
@@ -352,6 +386,7 @@ def Run(trainPrefix, testPrefix):
             peaks = FindPeaksSorted(trainDataList[i][k])
             peakList.append(peaks)
         peaksList.append(peakList)
+        
     
     for i in range(MODE):            
         X = []
@@ -372,67 +407,24 @@ def Run(trainPrefix, testPrefix):
                 hitRatios = np.array(hitRatios)
                 y.append(np.mean(hitRatios))
             ys.append(y)
-        print(X)
-        print(ys)
-        DrawHitLineChart2(X, ys, labels, labels[i])
-        plt.savefig(trainPrefix + ('@model=%d' % i))    
-                        
-            
-            
-    for i in range(MODE):
-        activeList = []
-        passiveList = []
-        for j in range(MODE):
-            if i == j:
-                activeList.extend(peaksList[j])
-            else:
-                passiveList.extend(peaksList[j])
-            
-        X = []
-        yActive = []
-        yPassive = []
-        for k0 in range(5, 100+1, 1):
-            kMulti = k0 / 10.0
-            X.append(kMulti)
-            
-            hitRatiosActive = []
-            for k in range(len(activeList)):
-                hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], activeList[k], kMulti)
-                hitRatiosActive.append(hitRatio)
-            hitRatiosActive = np.array(hitRatiosActive)
-            yActive.append(np.mean(hitRatiosActive))
+       ## print(X)
+      ##  print(ys)
+        
+        DrawHitLineChart2(X, ys, labels, labels[i])     
+        plt.savefig(trainPrefix + ('@model=%d&pagesize=%d' % (i, PAGESIZE)))  
+    """
 
-            hitRatiosPassive = []        
-            for k in range(len(passiveList)):
-                hitRatio = CalculateHitRatio2(peakMeans[i], peakStds[i], passiveList[k], kMulti)
-                hitRatiosPassive.append(hitRatio)
-            hitRatiosPassive = np.array(hitRatiosPassive)
-            yPassive.append(np.mean(hitRatiosPassive))
-            
-        DrawHitLineChart(X, yActive, yPassive, labels[i])
-        plt.savefig(trainPrefix + ('@model=%d' % i))    
-                        
-            
-            
+    
     for i in range(MODE):
-        print(Predict(allTestData[i],  peakMeans, peakStds))
         # now at mode i
         print('now at mode %d' % i)
+       ## print(Predict(allTestData[i],  peakMeans, peakStds, kX))
         result = []
+        ##print(testDataList[i])
         for j in range(len(testDataList[i])):
-            result.append(Predict(testDataList[i][j], peakMeans, peakStds))
+            result.append(Predict(testDataList[i][j], peakMeans, peakStds, kX))
         print(result)
         
-        
-    # create envelope
-    for i in range(MODE):
-        meanCurve, stdCurve = CreateCurve(trainDataList[i])
-        meanCurves.append(meanCurve)
-        stdCurves.append(stdCurve)
-    
-   ## peakMeanCurves = np.array(peakMeanCurves)
-   ## peakStdCurves = np.array(peakStdCurves)
-    
     # draw
    ## DrawEnvelope(meanCurves, stdCurves, labels) 
    ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
@@ -447,13 +439,13 @@ def Run(trainPrefix, testPrefix):
     
     
 if __name__ == '__main__':
-    Run('0328_2_9600_d100', '0328_2_9600_d100')
-    Run('0328_3_9600_d100', '0328_2_9600_d100')
-    Run('0328_4_9600_d100', '0328_2_9600_d100')
+    Run('0328_2_9600_d100', '0328_3_9600_d100')
+    Run('0328_3_9600_d100', '0328_4_9600_d100')
+    Run('0328_4_9600_d100', '0328_5_9600_d100')
     Run('0328_5_9600_d100', '0328_2_9600_d100')
     
-    Run('0329_1', '0328_2_9600_d100')
-    Run('0329_2', '0328_2_9600_d100')
+    Run('0329_1', '0329_2')
+    Run('0329_2', '0329_1')
     
     
     
