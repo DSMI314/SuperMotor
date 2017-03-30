@@ -234,8 +234,11 @@ def CalculateHitRatio2(mean, std, spotCurve, k = K):
             hitCount += 1
     return float(hitCount) / len(spotCurve)
 
+PEAKMEANS = []
+PEAKSTDS = []
+KX = []
 
-def Predict(data, peakMeans, peakStds, kX, successRatio = SUCCESSRATIO):
+def Predict(data, peakMeans = PEAKMEANS, peakStds = PEAKSTDS, kX = KX, successRatio = SUCCESSRATIO):
     # preprocess peak
     peaks = FindPeaksSorted(data, 10)
    ## print('peak = ' + str(peaks))
@@ -246,6 +249,9 @@ def Predict(data, peakMeans, peakStds, kX, successRatio = SUCCESSRATIO):
     
     return max(tmps)[1]
 
+def _Predict(buffer):
+    data = Parse(buffer, 1)
+    return Predict(data)
 
 def MakeFeatureMatrix(dataList, peakMeans, peakStds, percent = PERCENT, passRatio = PASSRATIO, kMultiplier = K):
     # calculate hit ratio for every mode which fit itself
@@ -332,6 +338,7 @@ def Train(trainData):
         kX.append(nowK)
                 
     return (peakMeans, peakStds, kX)
+  
     
 def Run(trainPrefix, testPrefix):
     labels = ['fan0',
@@ -364,10 +371,38 @@ def Run(trainPrefix, testPrefix):
         testDataList.append(Paging(testData))
     
     peakMeans, peakStds, kX = Train(allTrainData)
-    print(trainPrefix)
-    print(peakMeans)
-    print(peakStds)
-    print(kX)
+    
+    fpp = open('motorcycle.txt', 'w')
+    for i in range(MODE):
+        fpp.write(str(peakMeans[i]))
+        if i < MODE - 1:
+            fpp.write(',')
+        else:
+            fpp.write('\n')
+            
+    for i in range(MODE):
+        fpp.write(str(peakStds[i]))
+        if i < MODE - 1:
+            fpp.write(',')
+        else:
+            fpp.write('\n')
+            
+    for i in range(MODE):
+        fpp.write(str(kX[i]))
+        if i < MODE - 1:
+            fpp.write(',')
+        else:
+            fpp.write('\n')
+    fpp.close()    
+    
+    PEAKMEANS = peakMeans
+    PEAKSTDS = peakStds
+    KX = kX
+    
+##    print(trainPrefix)
+##    print(peakMeans)
+##    print(peakStds)
+##    print(kX)
     
     """
     # preprocess peak
@@ -424,7 +459,8 @@ def Run(trainPrefix, testPrefix):
         for j in range(len(testDataList[i])):
             result.append(Predict(testDataList[i][j], peakMeans, peakStds, kX))
         print(result)
-        
+    
+    
     # draw
    ## DrawEnvelope(meanCurves, stdCurves, labels) 
    ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
@@ -439,13 +475,16 @@ def Run(trainPrefix, testPrefix):
     
     
 if __name__ == '__main__':
+    Run('0328_2_9600_d100', '0328_2_9600_d100')
     Run('0328_2_9600_d100', '0328_3_9600_d100')
-    Run('0328_3_9600_d100', '0328_4_9600_d100')
-    Run('0328_4_9600_d100', '0328_5_9600_d100')
-    Run('0328_5_9600_d100', '0328_2_9600_d100')
+    Run('0328_2_9600_d100', '0328_4_9600_d100')
+    Run('0328_2_9600_d100', '0328_5_9600_d100')
+   ## Run('0328_3_9600_d100', '0328_3_9600_d100')
+   ## Run('0328_4_9600_d100', '0328_4_9600_d100')
+   ## Run('0328_5_9600_d100', '0328_5_9600_d100')
     
-    Run('0329_1', '0329_2')
-    Run('0329_2', '0329_1')
+    Run('0329_1', '0329_1')
+    Run('0329_2', '0329_2')
     
     
     
