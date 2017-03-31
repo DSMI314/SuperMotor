@@ -397,13 +397,14 @@ def main():
         
     
     # plot parameters
-    analogData = AnalogData(200)
+    analogData = AnalogData(300)
     dataList=[]
     print('start to receive data...')
     
     # open serial port
     ser = serial.Serial("COM4", 9600)
     ser.readline()
+    prevMode = None
     while True:
         try:
             line = ser.readline()
@@ -417,8 +418,21 @@ def main():
                     for k in range(len(dataList[0])):
                         a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
                     realData = Parse(a)
-                    print(Predict(realData, peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX))
+                    print(ser.inWaiting())
+                    prediction = Predict(realData, peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
+                 ##   print(prediction)
+                   ## if prevMode == None:
+                  ##      prevMode = prediction
+                 ##   elif prediction != prevMode:
+                 ##       prevMode = prediction
+                 ##       print('alert to %d', prediction)
                     
+                   ## fp = open('prediction.txt', 'w')
+                   ## fp.write(str(prediction))
+                   ## fp.close()
+                   
+                   
+                   
                     ##print(_Predict(dataList))
                    ## print("-------")
                    ## print(dataList)

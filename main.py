@@ -9,8 +9,6 @@ from parser0 import *
 
 K = 3
 PERCENT = 10
-PASSRATIO = 0.7
-SUCCESSRATIO = 0.9
 MODE = 4
 
 #####################################################################################
@@ -263,38 +261,7 @@ def Train(trainData):
             
         peaksList.append(peakList)
         valeysList.append(valeyList)
-        
-############################
-    trainPrefix = '0330_2'
-    labels = ['fan0',
-              'fan1',
-              'fan2',
-              'fan3']            
-    for i in range(MODE):            
-        X = []
-        ys = []
-        for k0 in range(5, 100+1, 1):
-            kMulti = k0 / 10.0
-            X.append(kMulti)
-        for j in range(MODE):
-            y = []
-            for k0 in range(5, 100+1, 1):
-                kMulti = k0 / 10.0
-            
-                hitRatios = []
-                for k in range(len(peaksList[j])):
-                    hitRatio = CalculateHitRatio(peakMeans[i], peakStds[i], peaksList[j][k], kMulti)
-                    hitRatios.append(hitRatio)
-                hitRatios = np.array(hitRatios)
-                y.append(np.mean(hitRatios))
-            ys.append(y)
-       ## print(X)
-      ##  print(ys)
-        
-        DrawHitLineChart2(X, ys, labels, labels[i])     
-        plt.savefig(trainPrefix + ('@peak&model=%d&pagesize=%d' % (i, PAGESIZE)))            
-                
-####################################
+    
     # find the best K for every mode, and put into kX
     peakKX = FindKX(peakMeans, peakStds, peaksList)
     valeyKX = FindKX(valeyMeans, valeyStds, valeysList)
@@ -397,7 +364,7 @@ if __name__ == '__main__':
  ##   Run('0329_1', '0329_1')
  ##   Run('0329_2', '0329_2')
     
-    Run('0330_2', '0330_2')
+    Run('0330_3', '0330_3')
     
     
     
