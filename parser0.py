@@ -1,8 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from sklearn import decomposition
-from sklearn import datasets
 
 """
 Given filelist, this class could parse them.
