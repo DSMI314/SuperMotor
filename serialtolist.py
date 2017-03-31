@@ -1,3 +1,7 @@
+import sys, serial
+import numpy as np
+from collections import deque
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -9,6 +13,8 @@ from parser0 import *
 
 K = 3
 PERCENT = 10
+PASSRATIO = 0.7
+SUCCESSRATIO = 0.9
 MODE = 4
 
 #####################################################################################
@@ -45,9 +51,12 @@ def DrawHitLineChart2(X, ys, labels, activeLabel):
     for j in range(MODE):
         ax.plot(X, ys[j], label = labels[j])
     ax.legend()
-    ax.set_title('Hit Ratios (for peaks in model %s)' % (activeLabel))
+    ax.set_title('Hit Ratios (in model %s)' % (activeLabel))
     
     
+
+
+
 def DrawEnvelope(meanCurves, stdCurves, labels, independent = True):
     XLABEL = 'timestamp'
     YLABEL = 'pca_value'
@@ -80,38 +89,7 @@ def DrawEnvelope(meanCurves, stdCurves, labels, independent = True):
             Fill(fig, ax, y1, y2, labels[i] + '_envelope')
         ax.legend()
 
-def DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels):
-    XLABEL = 'timeStamp'
-    YLABEL = 'PCA_value'
-    TITLE = 'Envelope'
 
-
-    fig, ax = plt.subplots()
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
-    ax.set_title(TITLE)    
-    
-    colors = ['blue', 'orange', 'green', 'red']
-    for i in range(MODE):
-        x = np.arange(0, PAGESIZE)
-        y = [peakMeans[i] for _ in range(PAGESIZE)]
-        ax.plot(x, y, label = labels[i] + '_peak', color = 'gray')    
-        
-        x = np.arange(0, PAGESIZE)
-        y = [valeyMeans[i] for _ in range(PAGESIZE)]
-        ax.plot(x, y, label = labels[i] + '_valey', color = 'gray') 
-        
-        y1 = [peakMeans[i] - peakKX[i] * peakStds[i] for _ in range(PAGESIZE)]
-        y2 = [peakMeans[i] + peakKX[i] * peakStds[i] for _ in range(PAGESIZE)]
-        ax.fill_between(x, y1, y2, label = labels[i] + '_envelope', facecolor = colors[i])
-        
-        y1 = [valeyMeans[i] - valeyKX[i] * valeyStds[i] for _ in range(PAGESIZE)]
-        y2 = [valeyMeans[i] + valeyKX[i] * valeyStds[i] for _ in range(PAGESIZE)]
-        ax.fill_between(x, y1, y2, label = labels[i] + '_envelope', facecolor = colors[i])
-        
-    ax.legend()    
-    
-    
 def DrawEnvelope2(trainingDataList, labels):
     XLABEL = 'timestamp'
     YLABEL = 'pca_value'
@@ -128,8 +106,8 @@ def DrawEnvelope2(trainingDataList, labels):
         
     fig, ax = plt.subplots()
 
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
+    plt.xlabel(XLABEL);
+    plt.ylabel(YLABEL);
     ax.set_title(TITLE)
     
     for i in range(len(meanCurves)):
@@ -186,6 +164,7 @@ def CalculateHitRatio(mean, std, spotCurve, k = K):
     return float(hitCount) / len(spotCurve)
 
 
+
 def FindKX(means, stds, spotList):
     kX = []
     for i in range(MODE):
@@ -220,7 +199,6 @@ def FindKX(means, stds, spotList):
         kX.append(nowK)    
     return kX
         
-        
 def Train(trainData):
     """
     we consider larger peaks which occupy top (RATIO)%
@@ -247,6 +225,7 @@ def Train(trainData):
         valeyMeans.append(np.mean(valeys))
         valeyStds.append(np.std(valeys))
     
+
     peaksList = []  
     valeysList = []
     for i in range(MODE):
@@ -262,9 +241,11 @@ def Train(trainData):
         peaksList.append(peakList)
         valeysList.append(valeyList)
     
+    
     # find the best K for every mode, and put into kX
     peakKX = FindKX(peakMeans, peakStds, peaksList)
     valeyKX = FindKX(valeyMeans, valeyStds, valeysList)
+    
     
     return (peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
 
@@ -333,10 +314,8 @@ def Run(trainPrefix, testPrefix):
     
     peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX = Train(allTrainData)
     WriteToFile(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
-  
-    """
-    predict
-    """
+    
+    
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
@@ -346,25 +325,128 @@ def Run(trainPrefix, testPrefix):
         for j in range(len(testDataList[i])):
             result.append(Predict(testDataList[i][j], peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX))
         print(result)
+    
+    
+    # draw
+   ## DrawEnvelope(meanCurves, stdCurves, labels) 
+   ## DrawEnvelope(meanCurves, stdCurves, labels, False) 
+    
+    ## plt.savefig(figurePrefix + ('@pagesize=%d' % pagesize))
         
-##    DrawEnvelope3(peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX, labels)
+
+   ## DrawXYZ(trainingFileList)    
+   ## DrawIndepenet(files)
+   ## DrawMixed(data, files[0])               
+   ## plt.show()       
+
+
+# class that holds analog data for N samples
+class AnalogData:
+    # constr
+    def __init__(self, maxLen):
+        self.ax = deque([0.0]*maxLen)
+        self.ay = deque([0.0]*maxLen)
+        self.az = deque([0.0]*maxLen)
+        self.maxLen = maxLen
+
+    # ring buffer
+    def addToBuf(self, buf, val):
+        if len(buf) < self.maxLen:
+            buf.append(val)
+        else:
+            buf.pop()
+            buf.appendleft(val)
+
+    # add data
+    def add(self, data):
+        assert(len(data) == 3)
+        self.addToBuf(self.ax, data[0])
+        self.addToBuf(self.ay, data[1])
+        self.addToBuf(self.az, data[2])
+    def mergeToList(self):
+        tmps=[[],[],[]]
+        tmps[0]=list(self.ax)
+        tmps[1]=list(self.ay)
+        tmps[2]=list(self.az)
+    ##    dataList = []
+    ##    for i in range(maxLen):
+    ##        dataList.append([tmps[0], tmps[1], tmps[2]])
+        return tmps
+
+      
+      
+# main() function
+def main():
+    # open feature data
+    fp = open('motorcycle.txt', 'r')
+    peakMeans = fp.readline().split(',')
+    peakStds = fp.readline().split(',')
+    peakKX = fp.readline().split(',')
     
-    plt.show()       
+    valeyMeans = fp.readline().split(',')
+    valeyStds = fp.readline().split(',')
+    valeyKX = fp.readline().split(',')
+    for i in range(4):
+        peakMeans[i] = float(peakMeans[i])
+        peakStds[i] = float(peakStds[i])
+        peakKX[i] = float(peakKX[i])
+        
+        valeyMeans[i] = float(valeyMeans[i])
+        valeyStds[i] = float(valeyStds[i])
+        valeyKX[i] = float(valeyKX[i])
+        
     
+    # plot parameters
+    analogData = AnalogData(300)
+    dataList=[]
+    print('start to receive data...')
     
+    # open serial port
+    ser = serial.Serial("COM4", 9600)
+    ser.readline()
+    prevMode = None
+    while True:
+        try:
+            line = ser.readline()
+            try:
+                data = [float(val) for val in line.decode().split(',')]
+                if(len(data) == 3):
+                    analogData.add(data)
+                    dataList=analogData.mergeToList()
+                    
+                    a = []
+                    for k in range(len(dataList[0])):
+                        a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
+                    realData = Parse(a)
+                    print(ser.inWaiting())
+                    prediction = Predict(realData, peakMeans, peakStds, peakKX, valeyMeans, valeyStds, valeyKX)
+                 ##   print(prediction)
+                   ## if prevMode == None:
+                  ##      prevMode = prediction
+                 ##   elif prediction != prevMode:
+                 ##       prevMode = prediction
+                 ##       print('alert to %d', prediction)
+                    
+                   ## fp = open('prediction.txt', 'w')
+                   ## fp.write(str(prediction))
+                   ## fp.close()
+                   
+                   
+                   
+                    ##print(_Predict(dataList))
+                   ## print("-------")
+                   ## print(dataList)
+                   ## print("-------")
+            except:
+                pass
+        except KeyboardInterrupt:
+            print('exiting')
+            break
+    # close serial
+    ser.flush()
+    ser.close()
+
+# call main
 if __name__ == '__main__':
-##    Run('0328_2_9600_d100', '0328_2_9600_d100')
-##    Run('0328_2_9600_d100', '0328_3_9600_d100')
-##    Run('0328_2_9600_d100', '0328_4_9600_d100')
-##    Run('0328_2_9600_d100', '0328_5_9600_d100')
-   ## Run('0328_3_9600_d100', '0328_3_9600_d100')
-   ## Run('0328_4_9600_d100', '0328_4_9600_d100')
-   ## Run('0328_5_9600_d100', '0328_5_9600_d100')
     
- ##   Run('0329_1', '0329_1')
- ##   Run('0329_2', '0329_2')
-    
-    Run('0330_3', '0330_3')
-    
-    
-    
+    main()
