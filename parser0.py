@@ -60,7 +60,7 @@ def Read(file):
 
 def Parse(buffer):
     for k in range(len(buffer)):
-        buffer[k][1] = 0.0
+        buffer[k][0] = 0.0
     records = GetPCA(buffer, 1)
     return records
 
