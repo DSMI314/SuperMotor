@@ -27,21 +27,20 @@ def Run(trainPrefix, testPrefix):
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
         
-    X, y = Train(allTrainData, trainPrefix)
-    WriteToFile(X, y)
+    seperators = Train(allTrainData, trainPrefix)
+##    print(seperators)
+    WriteToFile(seperators)
     
     """
     predict
     """
-    clf = SVC(kernel = 'linear', degree = 4)
-    clf.fit(X, y)
     
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
         result = []
         for j in range(len(testDataList[i])):
-            result.extend(Predict(testDataList[i][j], clf))
+            result.append(Predict(testDataList[i][j], seperators))
         print(result)
     
 def main(argv):

@@ -46,7 +46,7 @@ def ReadModel():
     
     y = fp.readline().split(',')
     
-    clf = SVC(kernel = 'linear', gamma = 4)
+    clf = SVC(degree = 4)
     clf.fit(X, y)
     
     return clf
