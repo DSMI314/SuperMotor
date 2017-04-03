@@ -27,10 +27,11 @@ def Run(trainPrefix, testPrefix):
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
         
-    seperators = Train(allTrainData, trainPrefix)
-##    print(seperators)
+    seperators = Train(allTrainData)
     WriteToFile(seperators)
     
+    PlotScatter(allTrainData, trainPrefix)
+
     """
     predict
     """
@@ -61,12 +62,11 @@ def main(argv):
     print('>> Completed the training!')   
     
 if __name__ == '__main__':
-
     """
-    testdata = ['0330_2',
-                '0331_1']
+    testdata = ['0403_1',
+                '0403_2',
+                '0403_3']
     for data in testdata:
-        for data2 in testdata:
-            main([data, data2])
+            main([data])
     """
     main(sys.argv[1:])
