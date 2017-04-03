@@ -1,18 +1,13 @@
 import sys
 from lib import *
 
-
 def Run(trainPrefix, testPrefix):
-    labels = ['fan0',
-              'fan1',
-              'fan2',
-              'fan3']
     
     trainFileList = []
     testFileList = []
     for i in range(MODE):
-        trainFileList.append(trainPrefix + '_' + labels[i])
-        testFileList.append(testPrefix + '_' + labels[i])
+        trainFileList.append(trainPrefix + '_' + LABELS[i])
+        testFileList.append(testPrefix + '_' + LABELS[i])
     
     # preprocess
     trainDataList = []
@@ -31,21 +26,24 @@ def Run(trainPrefix, testPrefix):
         ##
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
+        
+    seperators = Train(allTrainData)
+    WriteToFile(seperators)
     
-    peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX = Train(allTrainData)
-    WriteToFile(peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
-  
+##    PlotScatter(allTrainData, trainPrefix)
+
     """
     predict
     """
+    
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
         result = []
         for j in range(len(testDataList[i])):
-            result.append(Predict(testDataList[i][j], peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX))
+            result.append(Predict(testDataList[i][j], seperators))
         print(result)
-        
+    
 def main(argv):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
@@ -64,4 +62,11 @@ def main(argv):
     print('>> Completed the training!')   
     
 if __name__ == '__main__':
+    """
+    testdata = ['0403_1',
+                '0403_2',
+                '0403_3']
+    for data in testdata:
+            main([data])
+    """
     main(sys.argv[1:])

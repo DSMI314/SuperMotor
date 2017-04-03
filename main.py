@@ -3,6 +3,8 @@ from collections import deque
 
 from lib import *
 
+POOL_SIZE = 5
+
 # class that holds analog data for N samples
 class AnalogData:
     # constr
@@ -36,35 +38,47 @@ class AnalogData:
 TRAINING_MODEL_FILE = 'motorcycle.txt'
 TARGET_FILE = 'prediction.txt'
 
+def ReadModel():
+    fp = open(TRAINING_MODEL_FILE, 'r')
+    seperators = []
+    for token in fp.readline().split(','):
+        seperators.append(float(token))
+    
+    return seperators
+
+def AddToPool(pool, poolCount, val):
+    if len(pool) == POOL_SIZE:
+        x = pool.pop()
+        poolCount[x] -= 1
+    pool.appendleft(val)
+    poolCount[val] += 1
+    
+def TakeResult(poolCount):
+    dic = []
+    for i in range(MODE):
+        dic.append([poolCount[i], i])
+    dic.append([poolCount[MODE], -1])
+##    print(dic)
+    return max(dic)[1]
+    
 # main() function
 def main():
     # open feature data AND parse them
-    fp = open(TRAINING_MODEL_FILE, 'r')
-    peakMeans = fp.readline().split(',')
-    peakStds = fp.readline().split(',')
-    peakKX = fp.readline().split(',')
-    
-    valleyMeans = fp.readline().split(',')
-    valleyStds = fp.readline().split(',')
-    valleyKX = fp.readline().split(',')
-    for i in range(MODE):
-        peakMeans[i] = float(peakMeans[i])
-        peakStds[i] = float(peakStds[i])
-        peakKX[i] = float(peakKX[i])
-        
-        valleyMeans[i] = float(valleyMeans[i])
-        valleyStds[i] = float(valleyStds[i])
-        valleyKX[i] = float(valleyKX[i])
-        
-    
+    seperators = ReadModel()
+              
     # plot parameters
     analogData = AnalogData(PAGESIZE)
     dataList = []
-    print('start to receive data...')
-    
+    print('>> Start to receive data...')
+##    print(seperators)
     # open serial port
     ser = serial.Serial("COM4", 9600)
-    ser.readline()
+    for _ in range(20):
+        ser.readline()
+        
+    pool = deque([-1] * POOL_SIZE)
+    poolCount = [0, 0, 0, 0, POOL_SIZE] # (mode0, mode1, mode2, mode3, modeNone)
+
     while True:
         try:
             line = ser.readline()
@@ -78,27 +92,29 @@ def main():
                     for k in range(len(dataList[0])):
                         a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
                     realData = Parse(a)
-                    
-                    prediction = Predict(realData, peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
-                    
+               
+                    prediction = Predict(realData, seperators)
+                    AddToPool(pool, poolCount, prediction)
+                                        
                     fp = open(TARGET_FILE, 'w')
-                    fp.write(str(prediction))
+                    fp.write(str(TakeResult(poolCount)))
                     fp.close()
-                   
+
             except:
                 pass
         except KeyboardInterrupt:
+        
+            # reset file
+            fp = open(TARGET_FILE, 'w')
+            fp.write('-1')
+            fp.close()    
+            
             print('exiting')
             break
     # close serial
     ser.flush()
     ser.close()
     
-    # reset file
-    fp = open(TARGET_FILE, 'w')
-    fp.write('-1')
-    fp.close()    
-
 # call main
 if __name__ == '__main__':
     main()
