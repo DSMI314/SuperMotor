@@ -69,54 +69,48 @@ def Train(trainData, filenamePrefix = ''):
     trainDataList = []
     for i in range(MODE):
         trainDataList.append(Paging(trainData[i]))
-    
-    # preprocess peak and valley for getting gap  
-    gapMeans = []
-    for i in range(MODE):
-        # find peaks and valley
-        peaks = FindPeaksSorted(trainData[i])
-        valleys = FindValleysSorted(trainData[i])
         
-        gapMeans.append(np.mean(peaks) - np.mean(valleys))
-    
     # split every file
-    gapsXList = []
-    gapsYList = []
+    gapsList = []
     
     for i in range(MODE):
-        print(len(trainDataList[i]))
+        gapList = []
         for k in range(len(trainDataList[i])):
             gap = FindGaps(trainDataList[i][k])  
         
-            gapsXList.append([gap[0], gap[1], gap[2]])
-            gapsYList.append(i)
+            gapList.append(np.mean(gap))
+        gapsList.append(np.mean(gapList))
     
+    print(gapsList)
+    seperators = []
+    for i in range(1, MODE):
+        seperators.append((gapsList[i - 1] + gapsList[i]) / 2.0)
     
-    return gapsXList, gapsYList
+    print(seperators)        
+    return seperators
 
 
-def Predict(data, SVM):
+def Predict(data, seperators):
+    # preprocess peak
     gap = FindGaps(data)
-    result = SVM.predict([gap])
-    return int(result[0])
+    target = np.mean(gap)
+    for i in range(MODE - 1):
+        if target < seperators[i]:
+            return i
+    return MODE - 1
 
 
-def WriteToFile(X, y):
-    fpp = open('motorcycle.txt', 'w')
-
+def WriteByLine(fpp, X):
     n = len(X)
     for i in range(n):
-        fpp.write(str(X[i][0]) + ',' + str(X[i][1]) + ',' + str(X[i][2]))
-        if i < n - 1:
-            fpp.write('^')
-        else:
-            fpp.write('\n')   
-            
-    for i in range(n):
-        fpp.write(str(y[i]))
+        fpp.write(str(X[i]))
         if i < n - 1:
             fpp.write(',')
         else:
-            fpp.write('\n')    
+            fpp.write('\n')
+
+
+def WriteToFile(seperators):
+    fpp = open('motorcycle.txt', 'w')
+    WriteByLine(fpp, seperators)
     fpp.close()    
-    

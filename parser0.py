@@ -5,7 +5,7 @@ from sklearn import decomposition
 """
 Given filelist, this class could parse them.
 """
-PAGESIZE = 300
+PAGESIZE = 100
         
 def LoadCSV(filename):
     """
