@@ -27,8 +27,9 @@ def Run(trainPrefix, testPrefix):
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
         
-    X, y = Train(allTrainData, trainPrefix)
+    X, y = Train(allTrainData)
     
+    PlotScatter(allTrainData, trainPrefix)
 
    ## peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX = 
   ##  WriteToFile(peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
@@ -63,13 +64,7 @@ def main(argv):
     print('>> Completed the training!')   
     
 if __name__ == '__main__':
-    testdata = ['0328_2_9600_d100',
-                '0328_3_9600_d100',
-                '0328_4_9600_d100',
-                '0328_5_9600_d100',
-                '0329_1',
-                '0329_2',
-                '0330_2',
+    testdata = ['0330_2',
                 '0331_1']
     for data in testdata:
         main([data])

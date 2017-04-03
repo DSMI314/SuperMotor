@@ -1,6 +1,7 @@
+import matplotlib.pyplot as plt
+import numpy as np
 from parser0 import *
-from draw import *
-from sklearn.svm import SVC
+from mpl_toolkits.mplot3d import Axes3D
 
 TOP_PEAK_PERCENT = 10
 
@@ -10,6 +11,7 @@ LABELS = ['fan0',
           'fan1',
           'fan2',
           'fan3']
+
 
 def FindValleysSorted(X, ratio = TOP_PEAK_PERCENT):
     valleys = []
@@ -47,49 +49,47 @@ def FindPeaksSorted(X, ratio = TOP_PEAK_PERCENT):
     return peaks
 
 
-def CalculateHitRatio(mean, std, spotCurve, kMultiplier):
-    hitCount = 0
-    for i in range(len(spotCurve)):
-        if abs(spotCurve[i] - mean) <= kMultiplier * std:
-            hitCount += 1
-    return float(hitCount) / len(spotCurve)
-
-
-def FindKX(means, stds, spotList):
-    kX = []
+def PlotScatter(data, filenamePrefix = ''):
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    # preprocess
+    dataList = []
     for i in range(MODE):
-        tmps = []
-
-        for k0 in range(5, 100+1, 1):
-            kMulti = k0 * 0.1
-            h = [] # list of tuple(h0, h1, h2, h3)
-            for j in range(MODE):
-                hitRatios = []
-                for k in range(len(spotList[j])):
-                    hitRatio = CalculateHitRatio(means[i], stds[i], spotList[j][k], kMulti)
-                    hitRatios.append(hitRatio)
-                hitRatios = np.array(hitRatios)
-                h.append(np.mean(hitRatios))
-
-            gaps = []
-            for j in range(MODE):
-                if i != j:
-                    gaps.append(h[i] - h[j])
-
-            if len(gaps) > 0:
-                tmps.append([min(gaps), kMulti])
+        dataList.append(Paging(data[i]))
         
-        nowMax = 0
-        nowK = 0
-        for k1 in range(len(tmps)):
-            if tmps[k1][0] > nowMax:
-                nowMax, nowK = tmps[k1][0], tmps[k1][1]
-                
-        kX.append(nowK)    
-    return kX
+    ax.set_xlabel('meanGap1')
+    ax.set_ylabel('meanGap2')
+    ax.set_zlabel('meanGap3')
+    ax.set_title('Scatters of Mean Gaps in 3D (' + filenamePrefix + ')')    
 
+    for i in range(MODE):
+        gapList = []
+        for k in range(len(dataList[i])):
+            gap = []
+            for j in range(3):
+                fragment = dataList[i][k][int(PAGESIZE * j / 3): int(PAGESIZE * (j + 1) / 3)]
+                peaks = FindPeaksSorted(fragment)
+                valleys = FindValleysSorted(fragment)
+                if len(peaks) == 0:
+                    peaks.append(0)
+                if len(valleys) == 0:
+                    valleys.append(0)
+                gap.append(np.mean(peaks) - np.mean(valleys))
+            gapList.append(gap)
+            
+        nowList = [[], [], []]
+        for j in range(len(gapList)):
+            for k in range(3):
+                nowList[k].append(gapList[j][k])
 
-def Train(trainData, filenamePrefix = ''):
+        ax.scatter(nowList[0], nowList[1], nowList[2], label = LABELS[i])
+    
+    ax.legend()
+        
+    plt.savefig(filenamePrefix +'.png') 
+    
+    
+def Train(trainData):
     """
     we consider larger peaks which occupy top (RATIO)%
     """
@@ -99,25 +99,10 @@ def Train(trainData, filenamePrefix = ''):
     for i in range(MODE):
         trainDataList.append(Paging(trainData[i]))
     
-    # preprocess peak and valley for getting gap  
-    gapMeans = []
-    for i in range(MODE):
-        # find peaks and valley
-        peaks = FindPeaksSorted(trainData[i])
-        valleys = FindValleysSorted(trainData[i])
-        
-        gapMeans.append(np.mean(peaks) - np.mean(valleys))
-    
     # split every file
     gapsXList = []
     gapsYList = []
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')   
-    ax.set_xlabel('meanGap1')
-    ax.set_ylabel('meanGap2')
-    ax.set_zlabel('meanGap3')
-    ax.set_title('Scatters of Mean Gaps in 3D (' + filenamePrefix + ')')
     
     for i in range(MODE):
         gapList = []
@@ -133,21 +118,8 @@ def Train(trainData, filenamePrefix = ''):
                     valleys.append(0)
                 gap.append(np.mean(peaks) - np.mean(valleys))
             gapList.append(gap)
-        nowList = [[], [], []]
-        for j in range(len(gapList)):
-            for k in range(3):
-                nowList[k].append(gapList[j][k])
-        print(nowList[0])
-
-        ax.scatter(nowList[0], nowList[1], nowList[2], label = LABELS[i]) 
-        
-        gapsXList.extend(list(zip(nowList[0], nowList[1], nowList[2])))
-        gapsYList.extend([i] * len(nowList[0]))
-        
-    ax.legend()
-    
-    plt.savefig(filenamePrefix +'.png')
-    
+                    
+            
     return gapsXList, gapsYList
 
 
