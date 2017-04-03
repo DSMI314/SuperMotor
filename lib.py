@@ -96,9 +96,9 @@ def Train(trainData, filenamePrefix = ''):
 
 
 def Predict(data, SVM):
-    # preprocess peak
     gap = FindGaps(data)
-    return SVM.predict([gap])
+    result = SVM.predict([gap])
+    return int(result[0])
 
 
 def WriteToFile(X, y):

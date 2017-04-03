@@ -46,19 +46,25 @@ def ReadModel():
     
     y = fp.readline().split(',')
     
-    clf = SVC(kernel = 'linear', gamma = 4)
+    clf = SVC(kernel = 'linear', degree = 4)
     clf.fit(X, y)
     
     return clf
 
-def AddToPool(pool, val):
+def AddToPool(pool, poolCount, val):
     if len(pool) == POOL_SIZE:
-        pool.pop()
+        x = pool.pop()
+        poolCount[x] -= 1
     pool.appendleft(val)
+    poolCount[val] += 1
     
-def TakeResult(pool):
-    counts = np.bincount(pool)
-    return np.argmax(counts)
+def TakeResult(poolCount):
+    dic = []
+    for i in range(MODE):
+        dic.append([poolCount[i], i])
+    dic.append([poolCount[MODE], -1])
+##    print(dic)
+    return max(dic)[1]
     
 # main() function
 def main():
@@ -76,6 +82,7 @@ def main():
         ser.readline()
         
     pool = deque([-1] * POOL_SIZE)
+    poolCount = [0, 0, 0, 0, POOL_SIZE] # (mode0, mode1, mode2, mode3, modeNone)
     
     while True:
         try:
@@ -91,28 +98,32 @@ def main():
                         a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
                     realData = Parse(a)
                     
-                    
+                    print(ser.inWaiting())
                     prediction = Predict(realData, SVM)
-                    AddToPool(pool, prediction)
+
+                    AddToPool(pool, poolCount, prediction)
+                    print(pool)
+##                    print(TakeResult(poolCount))
                     
-                    fp = open(TARGET_FILE, 'w')
-                    fp.write(str(TakePool(pool)))
-                    fp.close()
+##                    fp = open(TARGET_FILE, 'w')
+##                    fp.write(str(TakeResult(poolCount)))
+##                    fp.close()
                    
             except:
                 pass
         except KeyboardInterrupt:
+        
+            # reset file
+            fp = open(TARGET_FILE, 'w')
+            fp.write('-1')
+            fp.close()    
+            
             print('exiting')
             break
     # close serial
     ser.flush()
     ser.close()
     
-    # reset file
-    fp = open(TARGET_FILE, 'w')
-    fp.write('-1')
-    fp.close()    
-
 # call main
 if __name__ == '__main__':
     main()
