@@ -3,7 +3,7 @@ from collections import deque
 
 from lib import *
 
-POOL_SIZE = 10
+POOL_SIZE = 5
 
 # class that holds analog data for N samples
 class AnalogData:
@@ -40,42 +40,44 @@ TARGET_FILE = 'prediction.txt'
 
 def ReadModel():
     fp = open(TRAINING_MODEL_FILE, 'r')
-    X = []
-    for toekn in fp.readline().split('^'):
-        X.append(toekn.split(','))
+    seperators = []
+    for token in fp.readline().split(','):
+        seperators.append(float(token))
     
-    y = fp.readline().split(',')
-    
-    clf = SVC(degree = 4)
-    clf.fit(X, y)
-    
-    return clf
+    return seperators
 
-def AddToPool(pool, val):
+def AddToPool(pool, poolCount, val):
     if len(pool) == POOL_SIZE:
-        pool.pop()
+        x = pool.pop()
+        poolCount[x] -= 1
     pool.appendleft(val)
+    poolCount[val] += 1
     
-def TakeResult(pool):
-    counts = np.bincount(pool)
-    return np.argmax(counts)
+def TakeResult(poolCount):
+    dic = []
+    for i in range(MODE):
+        dic.append([poolCount[i], i])
+    dic.append([poolCount[MODE], -1])
+##    print(dic)
+    return max(dic)[1]
     
 # main() function
 def main():
     # open feature data AND parse them
-    SVM = ReadModel()
+    seperators = ReadModel()
               
     # plot parameters
     analogData = AnalogData(PAGESIZE)
     dataList = []
     print('start to receive data...')
-    
+    print(seperators)
     # open serial port
     ser = serial.Serial("COM4", 9600)
     for _ in range(20):
         ser.readline()
         
     pool = deque([-1] * POOL_SIZE)
+    poolCount = [0, 0, 0, 0, POOL_SIZE]
     
     while True:
         try:
@@ -92,11 +94,11 @@ def main():
                     realData = Parse(a)
                     
                     
-                    prediction = Predict(realData, SVM)
-                    AddToPool(pool, prediction)
-                    
+                    prediction = Predict(realData, seperators)
+                    AddToPool(pool, poolCount, prediction)
+                                        
                     fp = open(TARGET_FILE, 'w')
-                    fp.write(str(TakePool(pool)))
+                    fp.write(str(TakeResult(poolCount)))
                     fp.close()
                    
             except:

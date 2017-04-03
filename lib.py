@@ -100,9 +100,10 @@ def Predict(data, seperators):
 
 
 def WriteByLine(fpp, X):
-    for i in range(len(X)):
+    n = len(X)
+    for i in range(n):
         fpp.write(str(X[i]))
-        if i < MODE - 1:
+        if i < n - 1:
             fpp.write(',')
         else:
             fpp.write('\n')

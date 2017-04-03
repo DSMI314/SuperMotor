@@ -61,9 +61,4 @@ def main(argv):
     print('>> Completed the training!')   
     
 if __name__ == '__main__':
-    testdata = ['0330_2',
-                '0331_1']
-    for data in testdata:
-        for data2 in testdata:
-            main([data, data2])
-   ## main(sys.argv[1:])
+    main(sys.argv[1:])
