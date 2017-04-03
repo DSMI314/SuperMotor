@@ -3,7 +3,7 @@ from collections import deque
 
 from lib import *
 
-POOL_SIZE = 5
+POOL_SIZE = 40
 
 # class that holds analog data for N samples
 class AnalogData:
