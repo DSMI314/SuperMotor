@@ -1,0 +1,18 @@
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe.config
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.pdb
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csprojResolveAssemblyReference.cache
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Form1.resources
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Properties.Resources.resources
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.GenerateResource.Cache
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
+c:\users\howeverover\documents\visual studio 2017\Projects\WindowsFormsApp1\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb
+D:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe.config
+D:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe
+D:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.pdb
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csprojResolveAssemblyReference.cache
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Form1.resources
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Properties.Resources.resources
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.GenerateResource.Cache
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
+D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb

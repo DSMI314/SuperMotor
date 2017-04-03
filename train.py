@@ -30,7 +30,7 @@ def Run(trainPrefix, testPrefix):
     seperators = Train(allTrainData)
     WriteToFile(seperators)
     
-    PlotScatter(allTrainData, trainPrefix)
+##    PlotScatter(allTrainData, trainPrefix)
 
     """
     predict
