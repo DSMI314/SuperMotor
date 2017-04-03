@@ -3,6 +3,8 @@ from collections import deque
 
 from lib import *
 
+POOL_SIZE = 10
+
 # class that holds analog data for N samples
 class AnalogData:
     # constr
@@ -36,27 +38,33 @@ class AnalogData:
 TRAINING_MODEL_FILE = 'motorcycle.txt'
 TARGET_FILE = 'prediction.txt'
 
+def ReadModel():
+    fp = open(TRAINING_MODEL_FILE, 'r')
+    X = []
+    for toekn in fp.readline().split('^'):
+        X.append(toekn.split(','))
+    
+    y = fp.readline().split(',')
+    
+    clf = SVC(kernel = 'linear', gamma = 4)
+    clf.fit(X, y)
+    
+    return clf
+
+def AddToPool(pool, val):
+    if len(pool) == POOL_SIZE:
+        pool.pop()
+    pool.appendleft(val)
+    
+def TakeResult(pool):
+    counts = np.bincount(pool)
+    return np.argmax(counts)
+    
 # main() function
 def main():
     # open feature data AND parse them
-    fp = open(TRAINING_MODEL_FILE, 'r')
-    peakMeans = fp.readline().split(',')
-    peakStds = fp.readline().split(',')
-    peakKX = fp.readline().split(',')
-    
-    valleyMeans = fp.readline().split(',')
-    valleyStds = fp.readline().split(',')
-    valleyKX = fp.readline().split(',')
-    for i in range(MODE):
-        peakMeans[i] = float(peakMeans[i])
-        peakStds[i] = float(peakStds[i])
-        peakKX[i] = float(peakKX[i])
-        
-        valleyMeans[i] = float(valleyMeans[i])
-        valleyStds[i] = float(valleyStds[i])
-        valleyKX[i] = float(valleyKX[i])
-        
-    
+    SVM = ReadModel()
+              
     # plot parameters
     analogData = AnalogData(PAGESIZE)
     dataList = []
@@ -64,7 +72,11 @@ def main():
     
     # open serial port
     ser = serial.Serial("COM4", 9600)
-    ser.readline()
+    for _ in range(20):
+        ser.readline()
+        
+    pool = deque([-1] * POOL_SIZE)
+    
     while True:
         try:
             line = ser.readline()
@@ -79,10 +91,12 @@ def main():
                         a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
                     realData = Parse(a)
                     
-                    prediction = Predict(realData, peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
+                    
+                    prediction = Predict(realData, SVM)
+                    AddToPool(pool, prediction)
                     
                     fp = open(TARGET_FILE, 'w')
-                    fp.write(str(prediction))
+                    fp.write(str(TakePool(pool)))
                     fp.close()
                    
             except:

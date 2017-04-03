@@ -28,23 +28,22 @@ def Run(trainPrefix, testPrefix):
         testDataList.append(Paging(testData))
         
     X, y = Train(allTrainData, trainPrefix)
+    WriteToFile(X, y)
     
-
-   ## peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX = 
-  ##  WriteToFile(peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
-  
     """
     predict
     """
-    """
+    clf = SVC(kernel = 'linear', degree = 4)
+    clf.fit(X, y)
+    
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
         result = []
         for j in range(len(testDataList[i])):
-            result.append(Predict(testDataList[i][j], peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX))
+            result.extend(Predict(testDataList[i][j], clf))
         print(result)
-    """
+    
 def main(argv):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
@@ -63,14 +62,9 @@ def main(argv):
     print('>> Completed the training!')   
     
 if __name__ == '__main__':
-    testdata = ['0328_2_9600_d100',
-                '0328_3_9600_d100',
-                '0328_4_9600_d100',
-                '0328_5_9600_d100',
-                '0329_1',
-                '0329_2',
-                '0330_2',
+    testdata = ['0330_2',
                 '0331_1']
     for data in testdata:
-        main([data])
+        for data2 in testdata:
+            main([data, data2])
    ## main(sys.argv[1:])

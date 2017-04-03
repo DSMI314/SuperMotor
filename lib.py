@@ -88,6 +88,18 @@ def FindKX(means, stds, spotList):
         kX.append(nowK)    
     return kX
 
+def FindGaps(data):
+    gap = []
+    for j in range(3):
+        fragment = data[int(PAGESIZE * j / 3): int(PAGESIZE * (j + 1) / 3)]
+        peaks = FindPeaksSorted(fragment)
+        valleys = FindValleysSorted(fragment)
+        if len(peaks) == 0:
+            peaks.append(0)
+        if len(valleys) == 0:
+            valleys.append(0)
+        gap.append(np.mean(peaks) - np.mean(valleys))
+    return gap
 
 def Train(trainData, filenamePrefix = ''):
     """
@@ -111,70 +123,40 @@ def Train(trainData, filenamePrefix = ''):
     # split every file
     gapsXList = []
     gapsYList = []
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')   
-    ax.set_xlabel('meanGap1')
-    ax.set_ylabel('meanGap2')
-    ax.set_zlabel('meanGap3')
-    ax.set_title('Scatters of Mean Gaps in 3D (' + filenamePrefix + ')')
     
     for i in range(MODE):
-        gapList = []
         for k in range(len(trainDataList[i])):
-            gap = []
-            for j in range(3):
-                fragment = trainDataList[i][k][int(PAGESIZE * j / 3): int(PAGESIZE * (j + 1) / 3)]
-                peaks = FindPeaksSorted(fragment)
-                valleys = FindValleysSorted(fragment)
-                if len(peaks) == 0:
-                    peaks.append(0)
-                if len(valleys) == 0:
-                    valleys.append(0)
-                gap.append(np.mean(peaks) - np.mean(valleys))
-            
-            gapList.append(gap)
-        ax.scatter(gapList[0], gapList[1], gapList[2], label = LABELS[i]) 
+            gap = FindGaps(trainDataList[i][k])  
         
-        gapsXList.extend(list(zip(gapList[0], gapList[1], gapList[2])))
-        gapsYList.extend([i] * len(gapList[0]))
-        
-    ax.legend()
+            gapsXList.append([gap[0], gap[1], gap[2]])
+            gapsYList.append(i)
     
-    plt.savefig(filenamePrefix +'.png')
     
     return gapsXList, gapsYList
 
 
-def Predict(data, peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX):
+def Predict(data, SVM):
     # preprocess peak
-    peaks = FindPeaksSorted(data)
-    valleys = FindValleysSorted(data)
-
-    tmps = []
-    for i in range(MODE):
-        hitPeakRatio = CalculateHitRatio(peakMeans[i], peakStds[i], peaks, peakKX[i])
-        hitValleyRatio = CalculateHitRatio(valleyMeans[i], valleyStds[i], valleys, valleyKX[i])
-        tmps.append([(hitPeakRatio + hitValleyRatio) / 2.0, i])
-
-    return max(tmps)[1]
+    gap = FindGaps(data)
+    return SVM.predict([gap])
 
 
-def WriteByLine(fpp, X):
-    for i in range(MODE):
-        fpp.write(str(X[i]))
-        if i < MODE - 1:
+def WriteToFile(X, y):
+    fpp = open('motorcycle.txt', 'w')
+
+    n = len(X)
+    for i in range(n):
+        fpp.write(str(X[i][0]) + ',' + str(X[i][1]) + ',' + str(X[i][2]))
+        if i < n - 1:
+            fpp.write('^')
+        else:
+            fpp.write('\n')   
+            
+    for i in range(n):
+        fpp.write(str(y[i]))
+        if i < n - 1:
             fpp.write(',')
         else:
-            fpp.write('\n')
-
-def WriteToFile(peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX):
-    fpp = open('motorcycle.txt', 'w')
-    WriteByLine(fpp, peakMeans)
-    WriteByLine(fpp, peakStds)
-    WriteByLine(fpp, peakKX)
-    WriteByLine(fpp, valleyMeans)
-    WriteByLine(fpp, valleyStds)
-    WriteByLine(fpp, valleyKX)
+            fpp.write('\n')    
     fpp.close()    
     
