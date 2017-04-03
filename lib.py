@@ -132,12 +132,17 @@ def Train(trainData, filenamePrefix = ''):
                 if len(valleys) == 0:
                     valleys.append(0)
                 gap.append(np.mean(peaks) - np.mean(valleys))
-            
             gapList.append(gap)
-        ax.scatter(gapList[0], gapList[1], gapList[2], label = LABELS[i]) 
+        nowList = [[], [], []]
+        for j in range(len(gapList)):
+            for k in range(3):
+                nowList[k].append(gapList[j][k])
+        print(nowList[0])
+
+        ax.scatter(nowList[0], nowList[1], nowList[2], label = LABELS[i]) 
         
-        gapsXList.extend(list(zip(gapList[0], gapList[1], gapList[2])))
-        gapsYList.extend([i] * len(gapList[0]))
+        gapsXList.extend(list(zip(nowList[0], nowList[1], nowList[2])))
+        gapsYList.extend([i] * len(nowList[0]))
         
     ax.legend()
     
