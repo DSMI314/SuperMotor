@@ -81,12 +81,10 @@ def Train(trainData, filenamePrefix = ''):
             gapList.append(np.mean(gap))
         gapsList.append(np.mean(gapList))
     
-    print(gapsList)
     seperators = []
     for i in range(1, MODE):
         seperators.append((gapsList[i - 1] + gapsList[i]) / 2.0)
-    
-    print(seperators)        
+       
     return seperators
 
 

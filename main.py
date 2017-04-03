@@ -44,16 +44,7 @@ def ReadModel():
     for token in fp.readline().split(','):
         seperators.append(float(token))
     
-<<<<<<< HEAD
-    y = fp.readline().split(',')
-    
-    clf = SVC(kernel = 'linear', degree = 4)
-    clf.fit(X, y)
-    
-    return clf
-=======
     return seperators
->>>>>>> feature/1D_seperator
 
 def AddToPool(pool, poolCount, val):
     if len(pool) == POOL_SIZE:
@@ -78,20 +69,16 @@ def main():
     # plot parameters
     analogData = AnalogData(PAGESIZE)
     dataList = []
-    print('start to receive data...')
-    print(seperators)
+    print('>> Start to receive data...')
+##    print(seperators)
     # open serial port
     ser = serial.Serial("COM4", 9600)
     for _ in range(20):
         ser.readline()
         
     pool = deque([-1] * POOL_SIZE)
-<<<<<<< HEAD
     poolCount = [0, 0, 0, 0, POOL_SIZE] # (mode0, mode1, mode2, mode3, modeNone)
-=======
-    poolCount = [0, 0, 0, 0, POOL_SIZE]
->>>>>>> feature/1D_seperator
-    
+
     while True:
         try:
             line = ser.readline()
@@ -105,28 +92,14 @@ def main():
                     for k in range(len(dataList[0])):
                         a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
                     realData = Parse(a)
-                    
-<<<<<<< HEAD
-                    print(ser.inWaiting())
-                    prediction = Predict(realData, SVM)
-
-                    AddToPool(pool, poolCount, prediction)
-                    print(pool)
-##                    print(TakeResult(poolCount))
-                    
-##                    fp = open(TARGET_FILE, 'w')
-##                    fp.write(str(TakeResult(poolCount)))
-##                    fp.close()
-=======
-                    
+               
                     prediction = Predict(realData, seperators)
                     AddToPool(pool, poolCount, prediction)
                                         
                     fp = open(TARGET_FILE, 'w')
                     fp.write(str(TakeResult(poolCount)))
                     fp.close()
->>>>>>> feature/1D_seperator
-                   
+
             except:
                 pass
         except KeyboardInterrupt:
