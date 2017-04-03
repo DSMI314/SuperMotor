@@ -1,8 +1,15 @@
 from parser0 import *
 from draw import *
+from sklearn.svm import SVC
 
 TOP_PEAK_PERCENT = 10
+
 MODE = 4
+
+LABELS = ['fan0',
+          'fan1',
+          'fan2',
+          'fan3']
 
 def FindValleysSorted(X, ratio = TOP_PEAK_PERCENT):
     valleys = []
@@ -19,6 +26,7 @@ def FindValleysSorted(X, ratio = TOP_PEAK_PERCENT):
     valleys = valleys[:int(pagesize * ratio / 100)]
     
     return valleys
+
 
 def FindPeaksSorted(X, ratio = TOP_PEAK_PERCENT):
     peaks = []
@@ -79,9 +87,9 @@ def FindKX(means, stds, spotList):
                 
         kX.append(nowK)    
     return kX
-        
-        
-def Train(trainData):
+
+
+def Train(trainData, filenamePrefix = ''):
     """
     we consider larger peaks which occupy top (RATIO)%
     """
@@ -91,43 +99,51 @@ def Train(trainData):
     for i in range(MODE):
         trainDataList.append(Paging(trainData[i]))
     
-    # preprocess peak and valley
-    peakMeans = []
-    peakStds = []
-    
-    valleyMeans = []
-    valleyStds = []
+    # preprocess peak and valley for getting gap  
+    gapMeans = []
     for i in range(MODE):
         # find peaks and valley
         peaks = FindPeaksSorted(trainData[i])
-        peakMeans.append(np.mean(peaks))
-        peakStds.append(np.std(peaks))
-        
         valleys = FindValleysSorted(trainData[i])
-        valleyMeans.append(np.mean(valleys))
-        valleyStds.append(np.std(valleys))
+        
+        gapMeans.append(np.mean(peaks) - np.mean(valleys))
     
     # split every file
-    peaksList = []  
-    valleysList = []
+    gapsXList = []
+    gapsYList = []
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')   
+    ax.set_xlabel('meanGap1')
+    ax.set_ylabel('meanGap2')
+    ax.set_zlabel('meanGap3')
+    ax.set_title('Scatters of Mean Gaps in 3D (' + filenamePrefix + ')')
+    
     for i in range(MODE):
-        peakList = []
-        valleyList = []
+        gapList = []
         for k in range(len(trainDataList[i])):
-            peaks = FindPeaksSorted(trainDataList[i][k])
-            valleys = FindValleysSorted(trainDataList[i][k])
+            gap = []
+            for j in range(3):
+                fragment = trainDataList[i][k][int(PAGESIZE * j / 3): int(PAGESIZE * (j + 1) / 3)]
+                peaks = FindPeaksSorted(fragment)
+                valleys = FindValleysSorted(fragment)
+                if len(peaks) == 0:
+                    peaks.append(0)
+                if len(valleys) == 0:
+                    valleys.append(0)
+                gap.append(np.mean(peaks) - np.mean(valleys))
             
-            peakList.append(peaks)
-            valleyList.append(valleys)
-            
-        peaksList.append(peakList)
-        valleysList.append(valleyList)
-
-    # find the best K for every mode, and put into kX
-    peakKX = FindKX(peakMeans, peakStds, peaksList)
-    valleyKX = FindKX(valleyMeans, valleyStds, valleysList)
-
-    return (peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX)
+            gapList.append(gap)
+        ax.scatter(gapList[0], gapList[1], gapList[2], label = LABELS[i]) 
+        
+        gapsXList.extend(list(zip(gapList[0], gapList[1], gapList[2])))
+        gapsYList.extend([i] * len(gapList[0]))
+        
+    ax.legend()
+    
+    plt.savefig(filenamePrefix +'.png')
+    
+    return gapsXList, gapsYList
 
 
 def Predict(data, peakMeans, peakStds, peakKX, valleyMeans, valleyStds, valleyKX):

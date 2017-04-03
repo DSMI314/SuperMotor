@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 
 #####################################################################################
 def Draw(fig, ax, X, label0):
@@ -21,10 +22,9 @@ def DrawHitLineChart(X, yActive, yPassive, activeLabel):
     ax.plot(X, yActive, label = activeLabel)
     ax.plot(X, yPassive, label = 'others')
 ##    Draw(fig, ax, yActive, activeLabel)
-##s    Draw(fig, ax, yPassive, 'others')
+##    Draw(fig, ax, yPassive, 'others')
     ax.legend()
     ax.set_title('Hit Ratios of %s and others (in model %s)' % (activeLabel, activeLabel))
-
 
 
 def DrawHitLineChart2(X, ys, labels, activeLabel):
@@ -131,3 +131,7 @@ def DrawEnvelope2(trainingDataList, labels):
         Fill(fig, ax, y1, y2, labels[i] + '_envelope')
         
     ax.legend()
+
+
+def DrawScatter3D(X, Y, Z, labels):
+    X
