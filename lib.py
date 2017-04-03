@@ -47,47 +47,6 @@ def FindPeaksSorted(X, ratio = TOP_PEAK_PERCENT):
     return peaks
 
 
-def CalculateHitRatio(mean, std, spotCurve, kMultiplier):
-    hitCount = 0
-    for i in range(len(spotCurve)):
-        if abs(spotCurve[i] - mean) <= kMultiplier * std:
-            hitCount += 1
-    return float(hitCount) / len(spotCurve)
-
-
-def FindKX(means, stds, spotList):
-    kX = []
-    for i in range(MODE):
-        tmps = []
-
-        for k0 in range(5, 100+1, 1):
-            kMulti = k0 * 0.1
-            h = [] # list of tuple(h0, h1, h2, h3)
-            for j in range(MODE):
-                hitRatios = []
-                for k in range(len(spotList[j])):
-                    hitRatio = CalculateHitRatio(means[i], stds[i], spotList[j][k], kMulti)
-                    hitRatios.append(hitRatio)
-                hitRatios = np.array(hitRatios)
-                h.append(np.mean(hitRatios))
-
-            gaps = []
-            for j in range(MODE):
-                if i != j:
-                    gaps.append(h[i] - h[j])
-
-            if len(gaps) > 0:
-                tmps.append([min(gaps), kMulti])
-        
-        nowMax = 0
-        nowK = 0
-        for k1 in range(len(tmps)):
-            if tmps[k1][0] > nowMax:
-                nowMax, nowK = tmps[k1][0], tmps[k1][1]
-                
-        kX.append(nowK)    
-    return kX
-
 def FindGaps(data):
     gap = []
     for j in range(3):
@@ -125,6 +84,7 @@ def Train(trainData, filenamePrefix = ''):
     gapsYList = []
     
     for i in range(MODE):
+        print(len(trainDataList[i]))
         for k in range(len(trainDataList[i])):
             gap = FindGaps(trainDataList[i][k])  
         
