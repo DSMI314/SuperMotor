@@ -27,21 +27,30 @@ def Run(trainPrefix, testPrefix):
         trainDataList.append(Paging(trainData))
         testDataList.append(Paging(testData))
         
-    seperators = Train(allTrainData)
-    WriteToFile(seperators)
+    X, Y = train2(allTrainData)
+    WriteToFile(X, Y)
 
     
     """
     predict
     """
-    
+    clf = SVC(kernel='poly', degree=1)
+    clf.fit(X, Y)
     for i in range(MODE):
         # now at mode i
         print('now at mode %d' % i)
         result = []
+        res = 0
         for j in range(len(testDataList[i])):
-            result.append(Predict(testDataList[i][j], seperators))
+            gap = np.mean(FindGaps(testDataList[i][j]))
+            print(gap)
+            pd = Predict(gap, clf)
+            result.append(pd)
+            if pd == i:
+                res += 1
         print(result)
+        res /= len(testDataList[i])
+        print('success ratio = %.1f%%\n' % (res * 100))
     
 def main(argv):
     if len(argv) == 0:
@@ -62,9 +71,8 @@ def main(argv):
     plt.show()
     
 if __name__ == '__main__':
-    """
-    testdata = ['0406_1']
-    for data in testdata:
-            main([data])
-    """
+
+ #   testdata = ['0411_2']
+ #   for data in testdata:
+ #           main([data])
     main(sys.argv[1:])

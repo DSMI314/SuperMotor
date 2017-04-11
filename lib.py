@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from parser0 import *
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.svm import SVC
 
 TOP_PEAK_PERCENT = 10
 
@@ -70,7 +71,7 @@ def PlotScatter(data, filenamePrefix = ''):
     dataList = []
     for i in range(MODE):
         dataList.append(Paging(data[i]))
-        
+
     ax.set_xlabel('meanGap1')
     ax.set_ylabel('meanGap2')
     ax.set_zlabel('meanGap3')
@@ -99,7 +100,7 @@ def PlotScatter(data, filenamePrefix = ''):
         ax.scatter(nowList[0], nowList[1], nowList[2], label = LABELS[i])
     
     ax.legend()
-        
+
     plt.savefig(filenamePrefix +'.png')
     plt.show()
 
@@ -134,18 +135,19 @@ def MyPlot(data, filenamePrefix = ''):
             for k in range(3):
                 nowList[k].append(gapList[j][k])
     
-    ax.scatter(nowList[0], nowList[1], nowList[2], label = 'fan3')
+    ax.scatter(nowList[0], nowList[1], nowList[2], label='fan3')
     
     ax.legend()
             
     plt.savefig(filenamePrefix + '.png')
-    
+
+
 def Train(trainData):
     # preprocess
     trainDataList = []
     for i in range(MODE):
         trainDataList.append(Paging(trainData[i]))
-        
+
     # split every file
     gapsList = []
     
@@ -161,18 +163,30 @@ def Train(trainData):
     seperators = []
     for i in range(1, MODE):
         seperators.append((gapsList[i - 1] + gapsList[i]) / 2.0)
-       
+
     return seperators
 
 
-def Predict(data, seperators):
-    # preprocess peak
-    gap = FindGaps(data)
-    target = np.mean(gap)
-    for i in range(MODE - 1):
-        if target < seperators[i]:
-            return i
-    return MODE - 1
+def train2(trainData):
+    trainDataList = []
+    for i in range(MODE):
+        trainDataList.append(Paging(trainData[i]))
+
+    # split every file
+    X = []
+    Y = []
+
+    for i in range(MODE):
+        for k in range(len(trainDataList[i])):
+            gap = FindGaps(trainDataList[i][k])
+            X.append([np.mean(gap)])
+            Y.append(i)
+    print(X)
+    return X, Y
+
+
+def Predict(target_gap, clf):
+    return int(clf.predict([[target_gap]])[0])
 
 
 def WriteByLine(fpp, X):
@@ -185,7 +199,8 @@ def WriteByLine(fpp, X):
             fpp.write('\n')
 
 
-def WriteToFile(seperators):
+def WriteToFile(X, Y):
     fpp = open('motorcycle.txt', 'w')
-    WriteByLine(fpp, seperators)
+    WriteByLine(fpp, X)
+    WriteByLine(fpp, Y)
     fpp.close()    

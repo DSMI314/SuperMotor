@@ -61,7 +61,7 @@ namespace WindowsFormsApp1
         }
         private void timer1_Tick(object sender, EventArgs e)
         {
-            int prediction = -1;
+            int prediction = prevMode;
             try
             {
                 StreamReader sr = new StreamReader(@"prediction.txt");
@@ -87,8 +87,8 @@ namespace WindowsFormsApp1
                 {
                     ChangeLight(1);
                 }
+                prevMode = prediction;
             }
-            prevMode = prediction;
             switch (prediction)
             {
                 case -1:
