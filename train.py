@@ -29,9 +29,8 @@ def Run(trainPrefix, testPrefix):
         
     seperators = Train(allTrainData)
     WriteToFile(seperators)
-    
-##    PlotScatter(allTrainData, trainPrefix)
 
+    
     """
     predict
     """
@@ -59,13 +58,12 @@ def main(argv):
     
     print('>> The machine is training ...')        
     Run(trainFileName, testFileName)
-    print('>> Completed the training!')   
+    print('>> Completed the training!')
+    plt.show()
     
 if __name__ == '__main__':
     """
-    testdata = ['0403_1',
-                '0403_2',
-                '0403_3']
+    testdata = ['0406_1']
     for data in testdata:
             main([data])
     """

@@ -6,6 +6,8 @@ from lib import *
 POOL_SIZE = 40
 
 # class that holds analog data for N samples
+
+
 class AnalogData:
     # constr
     def __init__(self, maxLen):
@@ -28,6 +30,7 @@ class AnalogData:
         self.addToBuf(self.ax, data[0])
         self.addToBuf(self.ay, data[1])
         self.addToBuf(self.az, data[2])
+
     def mergeToList(self):
         tmps=[[], [], []]
         tmps[0]=list(self.ax)
@@ -52,7 +55,7 @@ def AddToPool(pool, poolCount, val):
         poolCount[x] -= 1
     pool.appendleft(val)
     poolCount[val] += 1
-    
+
 def TakeResult(poolCount):
     dic = []
     for i in range(MODE):
@@ -60,7 +63,7 @@ def TakeResult(poolCount):
     dic.append([poolCount[MODE], -1])
 ##    print(dic)
     return max(dic)[1]
-    
+
 # main() function
 def main():
     # open feature data AND parse them
