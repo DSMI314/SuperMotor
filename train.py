@@ -1,78 +1,170 @@
 import sys
 from lib import *
 
-def Run(trainPrefix, testPrefix):
-    
-    trainFileList = []
-    testFileList = []
-    for i in range(MODE):
-        trainFileList.append(trainPrefix + '_' + LABELS[i])
-        testFileList.append(testPrefix + '_' + LABELS[i])
-    
+CELL_COUNT = 5
+
+
+def MyConcat(list1, list2):
+    result = []
+    for x in list1:
+        result.append(x)
+    for y in list2:
+        result.append(y)
+    return result
+
+
+def validate(rawData, offset):
     # preprocess
     trainDataList = []
     testDataList = []
-    allTrainData = []
-    allTestData = []
-    
-    
-    # read file   
-    for i in range(MODE):
-        trainData = Parse(Read(trainFileList[i]))
-        testData = Parse(Read(testFileList[i]))
-        ##
-        allTrainData.append(trainData)
-        allTestData.append(testData)
-        ##
-        trainDataList.append(Paging(trainData))
-        testDataList.append(Paging(testData))
-        
-    X, Y = train2(allTrainData)
-    WriteToFile(X, Y)
+    trainData = []
+    testData = []
 
-    
+    # read file
+    for i in range(MODE):
+        cell_size = int(len(rawData[i]) / CELL_COUNT)
+        ##
+        trainData.append(MyConcat(rawData[i][:cell_size * offset], rawData[i][cell_size * (offset + 1):]))
+        testData.append(rawData[i][cell_size * offset: cell_size * (offset + 1)])
+        ##
+        trainDataList.append(SlidingWindow(trainData[i]))
+        testDataList.append(SlidingWindow(testData[i]))
+
+    seperators = train(trainDataList)
+
+    """
+    predict
+    """
+
+    score = []
+    for i in range(MODE):
+        # now at mode i
+ #       print('now at mode %d' % i)
+        result = []
+        res = 0
+        for j in range(len(testDataList[i])):
+            gap = np.mean(FindGaps(testDataList[i][j]))
+#           print(gap)
+            pd = Predict(gap, seperators)
+            result.append(pd)
+            if pd == i:
+                res += 1
+ #       print(result)
+        res /= len(testDataList[i])
+ #       print('success ratio = %.1f%%\n' % (res * 100))
+        score.append(res)
+    return np.mean(score), seperators
+
+
+def validate2(rawData, offset):
+    # preprocess
+    trainDataList = []
+    testDataList = []
+    trainData = []
+    testData = []
+
+    # read file
+    for i in range(MODE):
+        cell_size = int(len(rawData[i]) / CELL_COUNT)
+        ##
+        trainData.append(MyConcat(rawData[i][:cell_size * offset], rawData[i][cell_size * (offset + 1):]))
+        testData.append(rawData[i][cell_size * offset: cell_size * (offset + 1)])
+        ##
+        trainDataList.append(SlidingWindow(trainData[i]))
+        testDataList.append(SlidingWindow(testData[i]))
+
+    X, Y = train2(trainDataList)
+
     """
     predict
     """
     clf = SVC(kernel='poly', degree=1)
     clf.fit(X, Y)
+    score = []
     for i in range(MODE):
         # now at mode i
-        print('now at mode %d' % i)
+  #      print('now at mode %d' % i)
         result = []
         res = 0
         for j in range(len(testDataList[i])):
             gap = np.mean(FindGaps(testDataList[i][j]))
-            print(gap)
-            pd = Predict(gap, clf)
+#           print(gap)
+            pd = Predict2(gap, clf)
             result.append(pd)
             if pd == i:
                 res += 1
-        print(result)
+ #       print(result)
         res /= len(testDataList[i])
-        print('success ratio = %.1f%%\n' % (res * 100))
-    
+ #       print('success ratio = %.1f%%\n' % (res * 100))
+        score.append(res)
+    return np.mean(score), X, Y
+
+
+def Run(namePrefix):
+    fileList = []
+    for i in range(MODE):
+        fileList.append(namePrefix + '_' + LABELS[i])
+
+    rawData = []
+    for i in range(MODE):
+        rawData.append(Parse(Read(fileList[i])))
+
+    max_score = 0
+    seperators = None
+    for offset in range(CELL_COUNT):
+        score, sep = validate(rawData, offset)
+        if score > max_score:
+            max_score, seperators = score, sep
+
+    print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+    WriteToFile(seperators)
+
+
+def Run2(namePrefix):
+
+    fileList = []
+    for i in range(MODE):
+        fileList.append(namePrefix + '_' + LABELS[i])
+
+    rawData = []
+    for i in range(MODE):
+        rawData.append(Parse(Read(fileList[i])))
+
+    max_score = 0
+    X, Y = None, None
+    for offset in range(CELL_COUNT):
+        score, x, y = validate2(rawData, offset)
+        if score > max_score:
+            max_score, X, Y = score, x, y
+
+    print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+    WriteToFile2(X, Y)
+
+
 def main(argv):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
         sys.exit(2)
-    elif len(argv) > 2:
-        print('Error: Only accept at most 2 parameters.')
+    elif len(argv) > 1:
+        print('Error: Only accept at most 1 parameter.')
         sys.exit(2)
               
-    trainFileName = argv[0]
-    testFileName = argv[0]
-    if len(argv) == 2:
-        testFileName = argv[1]
-    
-    print('>> The machine is training ...')        
-    Run(trainFileName, testFileName)
-    print('>> Completed the training!')
+    fileName = argv[0]
+
+    print('>> The machine is training (using GC)...')
+    Run(fileName)
+    print('>> Completed the training (using GC)!')
+
+    print('>> The machine is training (using SVM)...')
+    Run2(fileName)
+    print('>> Completed the training (using SVM)!')
     plt.show()
-    
+
+
 if __name__ == '__main__':
 
- #   testdata = ['0411_2']
- #   for data in testdata:
- #           main([data])
-    main(sys.argv[1:])
+    testdata = ['0412_7']
+    for data in testdata:
+        main([data])
+
+ #   main(sys.argv[1:])
