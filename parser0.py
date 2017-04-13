@@ -5,8 +5,9 @@ from sklearn import decomposition
 """
 Given filelist, this class could parse them.
 """
-PAGESIZE = 300
-        
+PAGESIZE = 100
+
+
 def LoadCSV(filename):
     """
     spider from csv which we experiment, then stored them into a list (n*3 dimesion)
@@ -63,6 +64,13 @@ def Parse(buffer):
         buffer[k][0] = 0.0
     records = GetPCA(buffer, 1)
     return records
+
+
+def SlidingWindow(buffer, pagesize=PAGESIZE):
+    result = []
+    for j in range(pagesize, len(buffer)):
+        result.append(buffer[j - pagesize: j])
+    return result
 
 
 def Paging(buffer, pagesize = PAGESIZE):

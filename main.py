@@ -4,7 +4,7 @@ from collections import deque
 from lib import *
 
 POOL_SIZE = 20
-BUFFER_SIZE = 10
+BUFFER_SIZE = 20
 
 # class that holds analog data for N samples
 
@@ -45,6 +45,15 @@ TARGET_FILE = 'prediction.txt'
 
 def ReadModel():
     fp = open(TRAINING_MODEL_FILE, 'r')
+    seperators = []
+    for token in fp.readline().split(','):
+        seperators.append(float(token))
+
+    return seperators
+
+
+def ReadModel2():
+    fp = open(TRAINING_MODEL_FILE, 'r')
     X = []
     Y = []
     for token in fp.readline().split(','):
@@ -52,7 +61,7 @@ def ReadModel():
     for token in fp.readline().split(','):
         Y.append(int(token))
 
-    clf = SVC(C=1, kernel='poly', degree=1)
+    clf = SVC(kernel='linear')
     clf.fit(X, Y)
     print(X)
     return clf
@@ -87,7 +96,11 @@ def TakeResult(poolCount):
 # main() function
 def main():
     # open feature data AND parse them
-    clf = ReadModel()
+    clf = ReadModel2()
+
+    # open feature data AND parse them
+ #   seperators = ReadModel()
+
     # plot parameters
     analogData = AnalogData(PAGESIZE)
     dataList = []
@@ -119,11 +132,13 @@ def main():
                     realData = Parse(a)
                     gap = np.mean(FindGaps(realData))
                     now_mean = AddToBuffer(mean_buffer, now_mean, gap)
-                    prediction = Predict(now_mean, clf)
+
+ #                   prediction = Predict(now_mean, seperators)
+                    prediction = Predict2(now_mean, clf)
 
                     AddToPool(pool, poolCount, prediction)
- #                   print(mean_buffer)
- #                   print('%f => res:%d' % (now_mean, prediction))
+                    print(mean_buffer)
+                    print('%f => res:%d' % (now_mean, prediction))
 
                     fp = open(TARGET_FILE, 'w')
                     fp.write(str(TakeResult(poolCount)))

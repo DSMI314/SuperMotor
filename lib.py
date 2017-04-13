@@ -14,7 +14,7 @@ LABELS = ['fan0',
           'fan3']
 
 
-def FindValleysSorted(X, ratio = TOP_PEAK_PERCENT):
+def FindValleysSorted(X, ratio=TOP_PEAK_PERCENT):
     valleys = []
     pagesize = len(X)
     for j in range(1, pagesize - 1):
@@ -104,6 +104,7 @@ def PlotScatter(data, filenamePrefix = ''):
     plt.savefig(filenamePrefix +'.png')
     plt.show()
 
+
 def MyPlot(data, filenamePrefix = ''):
     fig = plt.figure()
     ax = Axes3D(fig)
@@ -142,11 +143,7 @@ def MyPlot(data, filenamePrefix = ''):
     plt.savefig(filenamePrefix + '.png')
 
 
-def Train(trainData):
-    # preprocess
-    trainDataList = []
-    for i in range(MODE):
-        trainDataList.append(Paging(trainData[i]))
+def train(trainDataList):
 
     # split every file
     gapsList = []
@@ -154,9 +151,7 @@ def Train(trainData):
     for i in range(MODE):
         gapList = []
         for k in range(len(trainDataList[i])):
-
-            gap = FindGaps(trainDataList[i][k])  
-        
+            gap = FindGaps(trainDataList[i][k])
             gapList.append(np.mean(gap))
         gapsList.append(np.mean(gapList))
     
@@ -167,10 +162,7 @@ def Train(trainData):
     return seperators
 
 
-def train2(trainData):
-    trainDataList = []
-    for i in range(MODE):
-        trainDataList.append(Paging(trainData[i]))
+def train2(trainDataList):
 
     # split every file
     X = []
@@ -181,11 +173,18 @@ def train2(trainData):
             gap = FindGaps(trainDataList[i][k])
             X.append([np.mean(gap)])
             Y.append(i)
-    print(X)
+#    print(X)
     return X, Y
 
 
-def Predict(target_gap, clf):
+def Predict(target, seperators):
+    for i in range(MODE - 1):
+        if target < seperators[i]:
+            return i
+    return MODE - 1
+
+
+def Predict2(target_gap, clf):
     return int(clf.predict([[target_gap]])[0])
 
 
@@ -199,7 +198,13 @@ def WriteByLine(fpp, X):
             fpp.write('\n')
 
 
-def WriteToFile(X, Y):
+def WriteToFile(seperators):
+    fpp = open('motorcycle.txt', 'w')
+    WriteByLine(fpp, seperators)
+    fpp.close()
+
+
+def WriteToFile2(X, Y):
     fpp = open('motorcycle.txt', 'w')
     WriteByLine(fpp, X)
     WriteByLine(fpp, Y)
