@@ -39,19 +39,19 @@ def validate(rawData, offset):
     score = []
     for i in range(MODE):
         # now at mode i
- #       print('now at mode %d' % i)
+        print('now at mode %d' % i)
         result = []
         res = 0
         for j in range(len(testDataList[i])):
             gap = np.mean(FindGaps(testDataList[i][j]))
-#           print(gap)
+            print(gap)
             pd = Predict(gap, seperators)
             result.append(pd)
             if pd == i:
                 res += 1
- #       print(result)
+        print(result)
         res /= len(testDataList[i])
- #       print('success ratio = %.1f%%\n' % (res * 100))
+        print('success ratio = %.1f%%\n' % (res * 100))
         score.append(res)
     return np.mean(score), seperators
 
@@ -78,24 +78,24 @@ def validate2(rawData, offset):
     """
     predict
     """
-    clf = SVC(kernel='poly', degree=1)
+    clf = SVC(kernel='linear')
     clf.fit(X, Y)
     score = []
     for i in range(MODE):
         # now at mode i
-  #      print('now at mode %d' % i)
+        print('now at mode %d' % i)
         result = []
         res = 0
         for j in range(len(testDataList[i])):
             gap = np.mean(FindGaps(testDataList[i][j]))
-#           print(gap)
+            print(gap)
             pd = Predict2(gap, clf)
             result.append(pd)
             if pd == i:
                 res += 1
- #       print(result)
+        print(result)
         res /= len(testDataList[i])
- #       print('success ratio = %.1f%%\n' % (res * 100))
+        print('success ratio = %.1f%%\n' % (res * 100))
         score.append(res)
     return np.mean(score), X, Y
 
@@ -151,9 +151,9 @@ def main(argv):
               
     fileName = argv[0]
 
-    print('>> The machine is training (using GC)...')
-    Run(fileName)
-    print('>> Completed the training (using GC)!')
+#    print('>> The machine is training (using GC)...')
+#    Run(fileName)
+#    print('>> Completed the training (using GC)!')
 
     print('>> The machine is training (using SVM)...')
     Run2(fileName)
@@ -163,8 +163,8 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    testdata = ['0412_7']
-    for data in testdata:
-        main([data])
+ #   testdata = ['0413_2']
+ #   for data in testdata:
+ #       main([data])
 
- #   main(sys.argv[1:])
+    main(sys.argv[1:])

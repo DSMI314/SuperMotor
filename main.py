@@ -61,7 +61,7 @@ def ReadModel2():
     for token in fp.readline().split(','):
         Y.append(int(token))
 
-    clf = SVC(C=1, kernel='poly', degree=1)
+    clf = SVC(kernel='linear')
     clf.fit(X, Y)
     print(X)
     return clf
@@ -133,7 +133,7 @@ def main():
                     gap = np.mean(FindGaps(realData))
                     now_mean = AddToBuffer(mean_buffer, now_mean, gap)
 
-                  #  prediction = Predict(now_mean, seperators)
+ #                   prediction = Predict(now_mean, seperators)
                     prediction = Predict2(now_mean, clf)
 
                     AddToPool(pool, poolCount, prediction)
