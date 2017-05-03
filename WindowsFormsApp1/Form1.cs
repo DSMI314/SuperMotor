@@ -123,5 +123,10 @@ namespace WindowsFormsApp1
                     break;
             }
         }
+
+        private void warningLabel_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
