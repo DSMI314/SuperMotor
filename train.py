@@ -139,6 +139,7 @@ def Run2(namePrefix):
 
     print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
     WriteToFile2(X, Y)
+    PlotScatter(rawData)
 
 
 def main(argv):
@@ -148,7 +149,7 @@ def main(argv):
     elif len(argv) > 1:
         print('Error: Only accept at most 1 parameter.')
         sys.exit(2)
-              
+
     fileName = argv[0]
 
 #    print('>> The machine is training (using GC)...')
@@ -163,8 +164,8 @@ def main(argv):
 
 if __name__ == '__main__':
 
- #   testdata = ['0413_2']
- #   for data in testdata:
- #       main([data])
+    testdata = ['motor_0504_3y_2_COM5']
+    for data in testdata:
+        main([data])
 
-    main(sys.argv[1:])
+ #   main(sys.argv[1:])

@@ -6,12 +6,10 @@ from sklearn.svm import SVC
 
 TOP_PEAK_PERCENT = 10
 
-MODE = 4
+MODE = 2
 
-LABELS = ['fan0',
-          'fan1',
-          'fan2',
-          'fan3']
+LABELS = ['on',
+          'off']
 
 
 def FindValleysSorted(X, ratio=TOP_PEAK_PERCENT):
