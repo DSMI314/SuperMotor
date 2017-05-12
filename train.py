@@ -129,7 +129,7 @@ def Run2(namePrefix):
     rawData = []
     for i in range(MODE):
         rawData.append(Parse(Read(fileList[i])))
-
+    """
     max_score = 0
     X, Y = None, None
     for offset in range(CELL_COUNT):
@@ -139,6 +139,13 @@ def Run2(namePrefix):
 
     print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
     WriteToFile2(X, Y)
+    """
+    originalData = []
+    for i in range(MODE):
+        draw_xyz(Read(fileList[i]))
+
+    PlotScatter(rawData)
+    draw_line_chart(rawData)
 
 
 def main(argv):
@@ -148,7 +155,7 @@ def main(argv):
     elif len(argv) > 1:
         print('Error: Only accept at most 1 parameter.')
         sys.exit(2)
-              
+
     fileName = argv[0]
 
 #    print('>> The machine is training (using GC)...')
@@ -163,8 +170,8 @@ def main(argv):
 
 if __name__ == '__main__':
 
- #   testdata = ['0413_2']
- #   for data in testdata:
- #       main([data])
+    testdata = ['motor_0504_3y']
+    for data in testdata:
+        main([data])
 
-    main(sys.argv[1:])
+ #   main(sys.argv[1:])
