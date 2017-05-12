@@ -129,7 +129,7 @@ def Run2(namePrefix):
     rawData = []
     for i in range(MODE):
         rawData.append(Parse(Read(fileList[i])))
-
+    """
     max_score = 0
     X, Y = None, None
     for offset in range(CELL_COUNT):
@@ -139,7 +139,13 @@ def Run2(namePrefix):
 
     print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
     WriteToFile2(X, Y)
+    """
+    originalData = []
+    for i in range(MODE):
+        draw_xyz(Read(fileList[i]))
+
     PlotScatter(rawData)
+    draw_line_chart(rawData)
 
 
 def main(argv):
@@ -164,7 +170,7 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    testdata = ['motor_0504_3y_2_COM5']
+    testdata = ['motor_0504_3y']
     for data in testdata:
         main([data])
 
