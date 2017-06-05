@@ -11,9 +11,10 @@ else:
 
     
 if __name__ == '__main__':
-    ser=serial.Serial("COM4" , 9600 )
+    ser=serial.Serial("COM5" , 9600 )
     #first raw data may got some problemm, drop it
-    ser.readline()
+    for _ in range(20):
+        ser.readline()
     while True:
         line = ser.readline().decode()
         timer = time.strftime("%H:%M:%S", time.localtime())
