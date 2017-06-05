@@ -7,7 +7,6 @@ Given filelist, this class could parse them.
 """
 PAGESIZE = 100
 
-
 def LoadCSV(filename):
     """
     spider from csv which we experiment, then stored them into a list (n*3 dimesion)

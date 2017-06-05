@@ -43,10 +43,17 @@
             // _titleLabel
             // 
             this._titleLabel.AutoSize = true;
+<<<<<<< HEAD
             this._titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 60F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this._titleLabel.Location = new System.Drawing.Point(73, 65);
             this._titleLabel.Name = "_titleLabel";
             this._titleLabel.Size = new System.Drawing.Size(305, 91);
+=======
+            this._titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F);
+            this._titleLabel.Location = new System.Drawing.Point(140, 72);
+            this._titleLabel.Name = "_titleLabel";
+            this._titleLabel.Size = new System.Drawing.Size(255, 76);
+>>>>>>> release/release-0.3
             this._titleLabel.TabIndex = 0;
             this._titleLabel.Text = "Current";
             // 
@@ -58,11 +65,19 @@
             // 
             this.buttonMode1.BackColor = System.Drawing.SystemColors.Control;
             this.buttonMode1.Enabled = false;
+<<<<<<< HEAD
             this.buttonMode1.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.buttonMode1.ForeColor = System.Drawing.SystemColors.ControlText;
             this.buttonMode1.Location = new System.Drawing.Point(271, 249);
             this.buttonMode1.Name = "buttonMode1";
             this.buttonMode1.Size = new System.Drawing.Size(200, 300);
+=======
+            this.buttonMode1.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
+            this.buttonMode1.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.buttonMode1.Location = new System.Drawing.Point(305, 279);
+            this.buttonMode1.Name = "buttonMode1";
+            this.buttonMode1.Size = new System.Drawing.Size(150, 200);
+>>>>>>> release/release-0.3
             this.buttonMode1.TabIndex = 3;
             this.buttonMode1.Text = "Mode 1";
             this.buttonMode1.UseVisualStyleBackColor = false;
@@ -71,11 +86,19 @@
             // 
             this.buttonMode2.BackColor = System.Drawing.SystemColors.Control;
             this.buttonMode2.Enabled = false;
+<<<<<<< HEAD
             this.buttonMode2.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.buttonMode2.ForeColor = System.Drawing.SystemColors.ControlText;
             this.buttonMode2.Location = new System.Drawing.Point(518, 249);
             this.buttonMode2.Name = "buttonMode2";
             this.buttonMode2.Size = new System.Drawing.Size(200, 300);
+=======
+            this.buttonMode2.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
+            this.buttonMode2.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.buttonMode2.Location = new System.Drawing.Point(538, 279);
+            this.buttonMode2.Name = "buttonMode2";
+            this.buttonMode2.Size = new System.Drawing.Size(150, 200);
+>>>>>>> release/release-0.3
             this.buttonMode2.TabIndex = 4;
             this.buttonMode2.Text = "Mode 2";
             this.buttonMode2.UseVisualStyleBackColor = false;
@@ -84,11 +107,19 @@
             // 
             this.buttonMode3.BackColor = System.Drawing.SystemColors.Control;
             this.buttonMode3.Enabled = false;
+<<<<<<< HEAD
             this.buttonMode3.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.buttonMode3.ForeColor = System.Drawing.SystemColors.ControlText;
             this.buttonMode3.Location = new System.Drawing.Point(758, 249);
             this.buttonMode3.Name = "buttonMode3";
             this.buttonMode3.Size = new System.Drawing.Size(200, 300);
+=======
+            this.buttonMode3.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
+            this.buttonMode3.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.buttonMode3.Location = new System.Drawing.Point(773, 279);
+            this.buttonMode3.Name = "buttonMode3";
+            this.buttonMode3.Size = new System.Drawing.Size(150, 200);
+>>>>>>> release/release-0.3
             this.buttonMode3.TabIndex = 5;
             this.buttonMode3.Text = "Mode 3";
             this.buttonMode3.UseVisualStyleBackColor = false;
@@ -97,11 +128,19 @@
             // 
             this.buttonMode0.BackColor = System.Drawing.SystemColors.Control;
             this.buttonMode0.Enabled = false;
+<<<<<<< HEAD
             this.buttonMode0.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.buttonMode0.ForeColor = System.Drawing.SystemColors.ControlText;
             this.buttonMode0.Location = new System.Drawing.Point(25, 249);
             this.buttonMode0.Name = "buttonMode0";
             this.buttonMode0.Size = new System.Drawing.Size(200, 300);
+=======
+            this.buttonMode0.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
+            this.buttonMode0.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.buttonMode0.Location = new System.Drawing.Point(73, 279);
+            this.buttonMode0.Name = "buttonMode0";
+            this.buttonMode0.Size = new System.Drawing.Size(150, 200);
+>>>>>>> release/release-0.3
             this.buttonMode0.TabIndex = 6;
             this.buttonMode0.Text = "Mode 0";
             this.buttonMode0.UseVisualStyleBackColor = false;
@@ -109,9 +148,15 @@
             // warningLabel
             // 
             this.warningLabel.AutoSize = true;
+<<<<<<< HEAD
             this.warningLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
             this.warningLabel.ForeColor = System.Drawing.Color.Red;
             this.warningLabel.Location = new System.Drawing.Point(581, 87);
+=======
+            this.warningLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F);
+            this.warningLabel.ForeColor = System.Drawing.Color.Red;
+            this.warningLabel.Location = new System.Drawing.Point(644, 85);
+>>>>>>> release/release-0.3
             this.warningLabel.Name = "warningLabel";
             this.warningLabel.Size = new System.Drawing.Size(350, 63);
             this.warningLabel.TabIndex = 7;
@@ -120,7 +165,11 @@
             // 
             // lightPictureBox
             // 
+<<<<<<< HEAD
             this.lightPictureBox.Location = new System.Drawing.Point(471, 65);
+=======
+            this.lightPictureBox.Location = new System.Drawing.Point(538, 72);
+>>>>>>> release/release-0.3
             this.lightPictureBox.Name = "lightPictureBox";
             this.lightPictureBox.Size = new System.Drawing.Size(100, 100);
             this.lightPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
