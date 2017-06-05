@@ -107,7 +107,7 @@ def main():
     print('>> Start to receive data...')
 ##    print(seperators)
     # open serial port
-    ser = serial.Serial("COM4", 9600)
+    ser = serial.Serial("COM5", 9600)
     for _ in range(20):
         ser.readline()
         

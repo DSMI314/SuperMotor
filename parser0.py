@@ -7,7 +7,6 @@ Given filelist, this class could parse them.
 """
 PAGESIZE = 100
 
-
 def LoadCSV(filename):
     """
     spider from csv which we experiment, then stored them into a list (n*3 dimesion)
@@ -61,7 +60,7 @@ def Read(file):
 
 def Parse(buffer):
     for k in range(len(buffer)):
-        buffer[k][0] = 0.0
+        buffer[k][1] = 0.0
     records = GetPCA(buffer, 1)
     return records
 

@@ -11,7 +11,7 @@ else:
 
     
 if __name__ == '__main__':
-    ser=serial.Serial("COM4" , 9600 )
+    ser=serial.Serial("COM5" , 9600 )
     #first raw data may got some problemm, drop it
     for _ in range(20):
         ser.readline()
