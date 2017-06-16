@@ -1,7 +1,7 @@
 import sys, serial
 from collections import deque
 
-from lib import *
+from lib import Model
 
 POOL_SIZE = 20
 BUFFER_SIZE = 20
@@ -39,21 +39,9 @@ class AnalogData:
         tmps[2]=list(self.az)
         return tmps
 
-TRAINING_MODEL_FILE = 'motorcycle.txt'
-TARGET_FILE = 'prediction.txt'
-
-
-def ReadModel():
-    fp = open(TRAINING_MODEL_FILE, 'r')
-    seperators = []
-    for token in fp.readline().split(','):
-        seperators.append(float(token))
-
-    return seperators
-
 
 def ReadModel2():
-    fp = open(TRAINING_MODEL_FILE, 'r')
+    fp = open(Model.TRAINING_MODEL_FILE, 'r')
     X = []
     Y = []
     for token in fp.readline().split(','):
