@@ -13,6 +13,7 @@ class Parser(object):
     """
     PAGESIZE = 100
     TOP_PEAK_PERCENT = 10
+    DATA_FOLDER_PATH = 'recorded_original_data//'
 
     @staticmethod
     def read(filename):
@@ -98,7 +99,7 @@ class Parser(object):
 
         :param filename: filename string "without" extension.
         """
-        fp = open(filename + '.csv', 'r')
+        fp = open(Parser.DATA_FOLDER_PATH + filename + '.csv', 'r')
         records = []
         for line in fp:
             items = line.strip().split(',')
