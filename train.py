@@ -1,5 +1,4 @@
 import sys
-import matplotlib.pyplot as plt
 from lib import Model
 
 
@@ -17,7 +16,6 @@ def main(argv):
     model = Model(filename, labels)
     model.run()
     print('>> Completed the training (using SVM)!')
-    plt.show()
 
 
 if __name__ == '__main__':

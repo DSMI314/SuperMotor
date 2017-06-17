@@ -75,8 +75,8 @@ class Parser(object):
         gap = []
         for j in range(3):
             fragment = data[int(Parser.PAGESIZE * j / 3): int(Parser.PAGESIZE * (j + 1) / 3)]
-            peaks = Parser.__find_peaks_sorted(fragment)
-            valleys = Parser.__find_valley_sorted(fragment)
+            peaks = Parser.find_peaks_sorted(fragment)
+            valleys = Parser.find_valley_sorted(fragment)
             if len(peaks) == 0:
                 peaks.append(0)
             if len(valleys) == 0:
@@ -133,7 +133,7 @@ class Parser(object):
         return records
 
     @staticmethod
-    def __find_valley_sorted(xs, ratio=TOP_PEAK_PERCENT):
+    def find_valley_sorted(xs, ratio=TOP_PEAK_PERCENT):
         valleys = []
         pagesize = len(xs)
 
@@ -150,7 +150,7 @@ class Parser(object):
         return valleys
 
     @staticmethod
-    def __find_peaks_sorted(xs, ratio=TOP_PEAK_PERCENT):
+    def find_peaks_sorted(xs, ratio=TOP_PEAK_PERCENT):
         peaks = []
         pagesize = len(xs)
 
@@ -177,6 +177,7 @@ class Model(object):
     _FOLD_COUNT = 5
 
     def __init__(self, filename, labels):
+        self._filename = filename
         self._labels = labels
         self._mode = len(self._labels)
 
@@ -193,18 +194,21 @@ class Model(object):
             self._raw_data.append(Parser.parse(self._original_data[i]))
 
     def run(self):
+        """
         max_score = 0
         xs, ys = None, None
         for offset in range(Model._FOLD_COUNT):
             score, x, y = self.__validate(offset)
             if score > max_score:
                 max_score, xs, ys = score, x, y
-
         print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
         PresentationModel.write_to_file(self._mode, xs, ys)
+        """
 
-        # PlotScatter(_raw_data)
-        # draw_line_chart(_raw_data)
+        Drawer.plot_scatter(self._raw_data, self._filename, self._labels)
+        for i in range(self._mode):
+            Drawer.draw_xyz(self._original_data[i], self._filename, self._labels[i])
+        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels)
 
     def train(self, train_data_list):
         xs = []
@@ -373,108 +377,101 @@ class AnalogData(object):
         tmps[2] = list(self.az)
         return tmps
 
-"""
-def PlotScatter(data, filenamePrefix = ''):
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    # preprocess
-    dataList = []
-    for i in range(MODE):
-        dataList.append(Paging(data[i]))
 
-    ax.set_xlabel('meanGap1')
-    ax.set_ylabel('meanGap2')
-    ax.set_zlabel('meanGap3')
-    ax.set_title('Scatters of Mean Gaps in 3D (' + filenamePrefix + ')')    
+class Drawer(object):
 
-    for i in range(MODE):
-        gapList = []
-        for k in range(len(dataList[i])):
-            gap = []
+    @staticmethod
+    def plot_scatter(raw_data, title='', labels=[]):
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        # pre-process
+        dim = len(raw_data)
+        data_list = []
+        for i in range(dim):
+            data_list.append(Parser.paging(raw_data[i]))
+
+        ax.set_xlabel('meanGap1 (mg)')
+        ax.set_ylabel('meanGap2 (mg)')
+        ax.set_zlabel('meanGap3 (mg)')
+        ax.set_title('Scatters of Mean Gaps in 3D (' + title + ')')
+
+        for i in range(dim):
+            gap_list = []
+            for k in range(len(data_list[i])):
+                gap_list.append(Parser.find_gaps(data_list[i][k]))
+
+            now_list = [[], [], []]
+            for j in range(len(gap_list)):
+                for k in range(3):
+                    now_list[k].append(gap_list[j][k])
+
+            ax.scatter(now_list[0], now_list[1], now_list[2], label=labels[i])
+
+        ax.legend()
+
+        plt.savefig(title + '.png')
+        # plt.show()
+
+    @staticmethod
+    def draw_xyz(raw_data,  filename='', label=''):
+        xlabel = 'time_stamp (s/20)'
+        ylabel = 'acceleration (mg)'
+        title = 'Original Data of X,Y,Z (' + filename + '_' + label + ')'
+
+        fig, ax = plt.subplots(3, sharex='all')
+
+        rd = [[], [], []]
+        for k in range(len(raw_data)):
             for j in range(3):
-                fragment = dataList[i][k][int(PAGESIZE * j / 3): int(PAGESIZE * (j + 1) / 3)]
-                peaks = FindPeaksSorted(fragment)
-                valleys = FindValleysSorted(fragment)
+                rd[j].append(raw_data[k][j])
+
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        ax[0].set_title(title)
+
+        axis_labels = ['X', 'Y', 'Z']
+        for i in range(3):
+            x = np.arange(0, len(rd[i]))
+            y = rd[i]
+            ax[i].plot(x, y, label=axis_labels[i])
+            ax[i].legend()
+
+        plt.savefig(title + 'xyz.png')
+        # plt.show()
+
+    @staticmethod
+    def draw_line_chart(raw_data, filename='', labels=[]):
+        title = 'PCA Value (' + filename + ')'
+        fig, ax = plt.subplots()
+
+        data_list = []
+        # pre-process
+        for i in range(len(raw_data)):
+            data_list.append(Parser.sliding(raw_data[i]))
+
+        plt.xlabel('time_stamp (20/s)')
+        plt.ylabel('PCA_value (mg)')
+
+        colors = ['blue', 'orange', 'green']
+        for i in range(len(raw_data)):
+            peaks_list = []
+            valleys_list = []
+            for k in range(len(data_list[i])):
+                fragment = data_list[i][k]
+                peaks = Parser.find_peaks_sorted(fragment)
+                valleys = Parser.find_valley_sorted(fragment)
                 if len(peaks) == 0:
                     peaks.append(0)
                 if len(valleys) == 0:
                     valleys.append(0)
-                gap.append(np.mean(peaks) - np.mean(valleys))
-            gapList.append(gap)
-            
-        nowList = [[], [], []]
-        for j in range(len(gapList)):
-            for k in range(3):
-                nowList[k].append(gapList[j][k])
+                peaks_list.append(np.mean(peaks))
+                valleys_list.append(np.mean(valleys))
 
-        ax.scatter(nowList[0], nowList[1], nowList[2], label = LABELS[i])
-    
-    ax.legend()
+            X = np.arange(0, len(peaks_list))
+            ax.plot(X, peaks_list, label='peak_' + labels[i], color=colors[i])
+            ax.plot(X, valleys_list, '--', label='valley_' + labels[i], color=colors[i])
+        ax.legend()
+        ax.set_title(title)
 
-    plt.savefig(filenamePrefix +'.png')
-    plt.show()
-
-
-
-def Draw(fig, ax, X, label0):
-    x = np.arange(0, len(X))
-    y = X
-    ax.plot(x, y, label=label0)
-
-
-def draw_xyz(data):
-    XLABEL = 'time_stamp'
-    YLABEL = 'acceleration'
-    TITLE = 'Original Data of X,Y,Z'
-
-    fig, ax = plt.subplots(3, sharex=True)
-
-    rd = [[], [], []]
-    for k in range(len(data)):
-        for j in range(3):
-            rd[j].append(data[k][j])
-
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
-    ax[0].set_title(TITLE)
-
-    LL = ['X', 'Y', 'Z']
-    for i in range(3):
-        Draw(fig, ax[i], rd[i], LL[i])
-        ax[i].legend()
-
-
-def draw_line_chart(data):
-    fig, ax = plt.subplots()
-
-    dataList = []
-    # preprocess
-    for i in range(MODE):
-        dataList.append(Paging(data[i]))
-
-    plt.xlabel('time_stamp')
-    plt.ylabel('PCA_value')
-    
-    colors = ['blue', 'orange', 'green']
-    for i in range(MODE):
-        peaksList = []
-        valleysList = []
-        for k in range(len(dataList[i])):
-            gap = []
-            fragment = dataList[i][k]
-            peaks = FindPeaksSorted(fragment)
-            valleys = FindValleysSorted(fragment)
-            if len(peaks) == 0:
-                peaks.append(0)
-            if len(valleys) == 0:
-                valleys.append(0)
-            peaksList.append(np.mean(peaks))
-            valleysList.append(np.mean(valleys))
-
-        X = np.arange(0, len(peaksList))
-        ax.plot(X, peaksList, label='peak_' + LABELS[i], color=colors[i])
-        ax.plot(X, valleysList, label='valley_' + LABELS[i], color=colors[i])
-    ax.legend()
-    ax.set_title('PCA Value (for peaks and valley in model)')
-
-"""
+        plt.savefig(title + 'line_chart.png')
+        # plt.show()
