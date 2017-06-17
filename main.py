@@ -1,152 +1,62 @@
-import sys, serial
-from collections import deque
+import serial
+import numpy as np
 
-from lib import Model
-
-POOL_SIZE = 20
-BUFFER_SIZE = 20
-
-# class that holds analog data for N samples
+from lib import Parser, PresentationModel, AnalogData
 
 
-class AnalogData:
-    # constr
-    def __init__(self, maxLen):
-        self.ax = deque([0.0]*maxLen)
-        self.ay = deque([0.0]*maxLen)
-        self.az = deque([0.0]*maxLen)
-        self.maxLen = maxLen
-
-    # ring buffer
-    def addToBuf(self, buf, val):
-        if len(buf) < self.maxLen:
-            buf.append(val)
-        else:
-            buf.pop()
-            buf.appendleft(val)
-
-    # add data
-    def add(self, data):
-        assert(len(data) == 3)
-        self.addToBuf(self.ax, data[0])
-        self.addToBuf(self.ay, data[1])
-        self.addToBuf(self.az, data[2])
-
-    def mergeToList(self):
-        tmps=[[], [], []]
-        tmps[0]=list(self.ax)
-        tmps[1]=list(self.ay)
-        tmps[2]=list(self.az)
-        return tmps
-
-
-def ReadModel2():
-    fp = open(Model.TRAINING_MODEL_FILE, 'r')
-    X = []
-    Y = []
-    for token in fp.readline().split(','):
-        X.append([float(token[1:-2])])
-    for token in fp.readline().split(','):
-        Y.append(int(token))
-
-    clf = SVC(kernel='linear')
-    clf.fit(X, Y)
-    print(X)
-    return clf
-
-
-def AddToPool(pool, poolCount, val):
-    if len(pool) == POOL_SIZE:
-        x = pool.pop()
-        poolCount[x] -= 1
-    pool.appendleft(val)
-    poolCount[val] += 1
-
-
-def AddToBuffer(mean_buffer, now_mean, val):
-    if len(mean_buffer) == BUFFER_SIZE:
-        x = mean_buffer.pop()
-        now_mean = (now_mean * BUFFER_SIZE - x) / len(mean_buffer)
-    mean_buffer.appendleft(val)
-    now_mean = (now_mean * (len(mean_buffer) - 1) + val) / len(mean_buffer)
-    return now_mean
-
-
-def TakeResult(poolCount):
-    dic = []
-    for i in range(MODE):
-        dic.append([poolCount[i], i])
-    dic.append([poolCount[MODE], -1])
-##    print(dic)
-    return max(dic)[1]
-
-
-# main() function
 def main():
     # open feature data AND parse them
-    clf = ReadModel2()
-
-    # open feature data AND parse them
- #   seperators = ReadModel()
+    p_model = PresentationModel(PresentationModel.TRAINING_MODEL_FILE)
 
     # plot parameters
-    analogData = AnalogData(PAGESIZE)
-    dataList = []
+    analog_data = AnalogData(Parser.PAGESIZE)
     print('>> Start to receive data...')
-##    print(seperators)
+
     # open serial port
     ser = serial.Serial("COM5", 9600)
     for _ in range(20):
         ser.readline()
-        
-    pool = deque([-1] * POOL_SIZE)
-    poolCount = [0, 0, 0, 0, POOL_SIZE]  #(mode0, mode1, mode2, mode3, modeNone)
-    mean_buffer = deque([0] * BUFFER_SIZE)
-    now_mean = 0
 
     while True:
         try:
             line = ser.readline()
-            try:
-                data = [float(val) for val in line.decode().split(',')]
-                if(len(data) == 3):
-                    analogData.add(data)
-                    dataList = analogData.mergeToList()
-                    
-                    a = []
-                    for k in range(len(dataList[0])):
-                        a.append([dataList[0][k], dataList[1][k], dataList[2][k]])
 
-                    realData = Parse(a)
-                    gap = np.mean(FindGaps(realData))
-                    now_mean = AddToBuffer(mean_buffer, now_mean, gap)
+            data = [float(val) for val in line.decode().split(',')]
+            if len(data) == 3:
+                analog_data.add(data)
+                data_list = analog_data.merge_to_list()
 
- #                   prediction = Predict(now_mean, seperators)
-                    prediction = Predict2(now_mean, clf)
+                a = []
+                for k in range(len(data_list[0])):
+                    a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
 
-                    AddToPool(pool, poolCount, prediction)
-                    print(mean_buffer)
-                    print('%f => res:%d' % (now_mean, prediction))
+                real_data = Parser.parse(a)
+                gap = np.mean(Parser.find_gaps(real_data))
+                p_model.add_to_buffer(gap)
 
-                    fp = open(TARGET_FILE, 'w')
-                    fp.write(str(TakeResult(poolCount)))
-                    fp.close()
+                prediction = p_model.predict()
 
-            except:
-                pass
+                p_model.add_to_pool(prediction)
+
+                print(p_model._mean_buffer)
+                print('%f => res:%d' % (p_model._now_mean, prediction))
+
+                fp = open(PresentationModel.TARGET_FILE, 'w')
+                fp.write(str(p_model.take_result()))
+                fp.close()
+
         except KeyboardInterrupt:
-        
-            # reset file
-            fp = open(TARGET_FILE, 'w')
-            fp.write('-1')
-            fp.close()    
-            
             print('exiting')
             break
-    # close serial
-    ser.flush()
-    ser.close()
-    
-# call main
+        finally:
+            # close serial
+            ser.flush()
+            ser.close()
+
+            # reset file
+            fp = open(PresentationModel.TARGET_FILE, 'w')
+            fp.write('-1')
+            fp.close()
+
 if __name__ == '__main__':
     main()

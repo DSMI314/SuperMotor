@@ -25,5 +25,4 @@ if __name__ == '__main__':
     test_data = ['motor_0504_3y']
     for data in test_data:
         main([data])
-
- #   main(sys.argv[1:])
+    # main(sys.argv[1:])
