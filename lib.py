@@ -34,8 +34,8 @@ class Parser(object):
         :param buffer: n*1 dimension list
         :return: n*1 dimension list
         """
-        # for k in range(len(buffer)):
-        #     buffer[k][1] = 0.0
+        for k in range(len(buffer)):
+            buffer[k][2] = 0.0
         records = Parser.__get_pca(buffer, 1)
         return records
 
@@ -205,11 +205,11 @@ class Model(object):
         print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
         PresentationModel.write_to_file(self._mode, xs, ys)
         """
-
-        Drawer.plot_scatter(self._raw_data, self._filename, self._labels)
-        for i in range(self._mode):
-            Drawer.draw_xyz(self._original_data[i], self._filename, self._labels[i])
-        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels)
+        SUFFIX = 'XY'
+        Drawer.plot_scatter(self._raw_data, self._filename, self._labels, SUFFIX)
+        # for i in range(self._mode):
+        #     Drawer.draw_xyz(self._original_data[i], self._filename, self._labels[i], SUFFIX)
+        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, SUFFIX)
 
     def train(self, train_data_list):
         xs = []
@@ -382,19 +382,19 @@ class AnalogData(object):
 class Drawer(object):
 
     @staticmethod
-    def plot_scatter(raw_data, title='', labels=[]):
+    def plot_scatter(raw_data, title='', labels=[], suffix=''):
         fig = plt.figure()
         ax = Axes3D(fig)
         # pre-process
         dim = len(raw_data)
         data_list = []
         for i in range(dim):
-            data_list.append(Parser.paging(raw_data[i]))
+            data_list.append(Parser.sliding(raw_data[i]))
 
         ax.set_xlabel('meanGap1 (mg)')
         ax.set_ylabel('meanGap2 (mg)')
         ax.set_zlabel('meanGap3 (mg)')
-        ax.set_title('Scatters of Mean Gaps in 3D (' + title + ')')
+        ax.set_title('Scatters of Mean Gaps in 3D (' + title + ')' + '[' + suffix + ']')
 
         for i in range(dim):
             gap_list = []
@@ -410,14 +410,14 @@ class Drawer(object):
 
         ax.legend()
 
-        plt.savefig(title + '.png')
+        plt.savefig(title + '[' + suffix + ']' + '.png')
         # plt.show()
 
     @staticmethod
-    def draw_xyz(raw_data,  filename='', label=''):
-        xlabel = 'time_stamp (s/20)'
-        ylabel = 'acceleration (mg)'
-        title = 'Original Data of X,Y,Z (' + filename + '_' + label + ')'
+    def draw_xyz(raw_data,  filename='', label='', suffix=''):
+        x_label = 'time_stamp (s/20)'
+        y_label = 'acceleration (mg)'
+        title = 'Original Data of X,Y,Z (' + filename + '_' + label + ') [' + suffix + ']'
 
         fig, ax = plt.subplots(3, sharex='all')
 
@@ -426,8 +426,8 @@ class Drawer(object):
             for j in range(3):
                 rd[j].append(raw_data[k][j])
 
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
         ax[0].set_title(title)
 
         axis_labels = ['X', 'Y', 'Z']
@@ -441,8 +441,8 @@ class Drawer(object):
         # plt.show()
 
     @staticmethod
-    def draw_line_chart(raw_data, filename='', labels=[]):
-        title = 'PCA Value (' + filename + ')'
+    def draw_line_chart(raw_data, filename='', labels=[], suffix=''):
+        title = 'PCA Value (' + filename + ') [' + suffix + ']'
         fig, ax = plt.subplots()
 
         data_list = []

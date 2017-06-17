@@ -11,7 +11,7 @@ def main(argv):
         sys.exit(2)
 
     filename = argv[0]
-    labels = ['HOOK', 'BODY', 'TOP']
+    labels = ['on', 'off']
     print('>> The machine is training (using SVM)...')
     model = Model(filename, labels)
     model.run()
@@ -20,7 +20,9 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0504_4Y7M']
+    test_data = ['motor_0504_4Y7M_2_HOOK',
+                 'motor_0504_4Y7M_2_BODY',
+                 'motor_0504_4Y7M_2_TOP']
     for data in test_data:
         main([data])
     # main(sys.argv[1:])
