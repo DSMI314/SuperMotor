@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from collections import deque
+import statistics
 
 from sklearn.svm import SVC
 from sklearn import decomposition
@@ -34,8 +35,8 @@ class Parser(object):
         :param buffer: n*1 dimension list
         :return: n*1 dimension list
         """
-        for k in range(len(buffer)):
-            buffer[k][2] = 0.0
+        # for k in range(len(buffer)):
+        #     buffer[k][2] = 0.0
         records = Parser.__get_pca(buffer, 1)
         return records
 
@@ -90,6 +91,9 @@ class Parser(object):
         pca = decomposition.PCA(n_components=n)
         pca.fit(records)
         records = pca.transform(records)
+        print('mean = ' + str(pca.mean_))
+        # print coefficient
+        print(pca.components_)
         return records
 
     @staticmethod
@@ -205,11 +209,13 @@ class Model(object):
         print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
         PresentationModel.write_to_file(self._mode, xs, ys)
         """
-        SUFFIX = 'XY'
-        Drawer.plot_scatter(self._raw_data, self._filename, self._labels, SUFFIX)
+        SUFFIX = 'XYZ'
+        Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, SUFFIX)
         # for i in range(self._mode):
-        #     Drawer.draw_xyz(self._original_data[i], self._filename, self._labels[i], SUFFIX)
-        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, SUFFIX)
+        #     Drawer.plot_all_2d_scatter(self._original_data[i], i, self._filename, self._labels[i])
+        # for i in range(self._mode):
+        #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], SUFFIX)
+        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, SUFFIX)
 
     def train(self, train_data_list):
         xs = []
@@ -381,8 +387,39 @@ class AnalogData(object):
 
 class Drawer(object):
 
+    COLORS = ['blue', 'orange', 'green']
+
     @staticmethod
-    def plot_scatter(raw_data, title='', labels=[], suffix=''):
+    def plot_all_2d_scatter(raw_data, index, title='', suffix=''):
+        # pre-process
+        dim = len(raw_data)
+        data_list = []
+        for i in range(dim):
+            data_list.append(Parser.sliding(raw_data[i]))
+
+        rd = [[], [], []]
+        for k in range(len(raw_data)):
+            for j in range(3):
+                rd[j].append(raw_data[k][j])
+
+        marks = ['X', 'Y', 'Z']
+        for i in range(3):
+            for j in range(i + 1, 3):
+                fig, ax = plt.subplots()
+                x_label = 'acceleration at ' + marks[i] + ' axis (mg)'
+                y_label = 'acceleration at ' + marks[j] + ' axis (mg)'
+                plt.xlabel(x_label)
+                plt.ylabel(y_label)
+                ax.set_title('Scatters of Original Data in 2D (' + title + '_' + suffix + ')'
+                             + '[' + marks[i] + marks[j] + ']')
+                x = rd[i]
+                y = rd[j]
+                plt.scatter(x, y, label=marks[i] + marks[j], color=Drawer.COLORS[index], alpha=0.2)
+                ax.legend()
+                plt.savefig(title + '_' + suffix + '[' + marks[i] + marks[j] + ']' + '2d.png')
+
+    @staticmethod
+    def plot_3d_scatter(raw_data, title='', labels=[], suffix=''):
         fig = plt.figure()
         ax = Axes3D(fig)
         # pre-process
@@ -414,7 +451,7 @@ class Drawer(object):
         # plt.show()
 
     @staticmethod
-    def draw_xyz(raw_data,  filename='', label='', suffix=''):
+    def draw_xyz(raw_data, index, filename='', label='', suffix=''):
         x_label = 'time_stamp (s/20)'
         y_label = 'acceleration (mg)'
         title = 'Original Data of X,Y,Z (' + filename + '_' + label + ') [' + suffix + ']'
@@ -434,7 +471,7 @@ class Drawer(object):
         for i in range(3):
             x = np.arange(0, len(rd[i]))
             y = rd[i]
-            ax[i].plot(x, y, label=axis_labels[i])
+            ax[i].plot(x, y, color=Drawer.COLORS[index], label=axis_labels[i])
             ax[i].legend()
 
         plt.savefig(title + 'xyz.png')
@@ -453,7 +490,6 @@ class Drawer(object):
         plt.xlabel('time_stamp (20/s)')
         plt.ylabel('PCA_value (mg)')
 
-        colors = ['blue', 'orange', 'green']
         for i in range(len(raw_data)):
             peaks_list = []
             valleys_list = []
@@ -469,8 +505,8 @@ class Drawer(object):
                 valleys_list.append(np.mean(valleys))
 
             X = np.arange(0, len(peaks_list))
-            ax.plot(X, peaks_list, label='peak_' + labels[i], color=colors[i])
-            ax.plot(X, valleys_list, '--', label='valley_' + labels[i], color=colors[i])
+            ax.plot(X, peaks_list, label='peak_' + labels[i], color=Drawer.COLORS[i])
+            ax.plot(X, valleys_list, '--', label='valley_' + labels[i], color=Drawer.COLORS[i])
         ax.legend()
         ax.set_title(title)
 
