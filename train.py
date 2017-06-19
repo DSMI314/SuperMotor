@@ -1,5 +1,4 @@
 import sys
-import matplotlib.pyplot as plt
 from lib import Model
 
 
@@ -12,17 +11,19 @@ def main(argv):
         sys.exit(2)
 
     filename = argv[0]
-    labels = ['COM4', 'COM5', 'COM6']
+    labels = ['HOOK', 'BODY', 'TOP']
+    print('>> Processing file \"' + filename + '\"...')
     print('>> The machine is training (using SVM)...')
     model = Model(filename, labels)
     model.run()
     print('>> Completed the training (using SVM)!')
-    plt.show()
 
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0504_3y']
+    test_data = ['motor_0504_4Y6M',
+                 'motor_0504_4Y7M',
+                 'motor_0504_5Y']
     for data in test_data:
         main([data])
     # main(sys.argv[1:])
