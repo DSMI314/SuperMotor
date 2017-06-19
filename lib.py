@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from collections import deque
-import statistics
 
 from sklearn.svm import SVC
 from sklearn import decomposition
@@ -14,7 +13,8 @@ class Parser(object):
     """
     PAGESIZE = 100
     TOP_PEAK_PERCENT = 10
-    DATA_FOLDER_PATH = 'recorded_original_data//'
+    DATA_FOLDER_PATH = 'recorded_original_data//position-based//'
+    MEAN_GAP_DIM = 3
 
     @staticmethod
     def read(filename):
@@ -36,7 +36,7 @@ class Parser(object):
         :return: n*1 dimension list
         """
         # for k in range(len(buffer)):
-        #     buffer[k][2] = 0.0
+        #     buffer[k][0] = 0.0
         records = Parser.__get_pca(buffer, 1)
         return records
 
@@ -75,8 +75,9 @@ class Parser(object):
         :return: 1*3 dimension list
         """
         gap = []
-        for j in range(3):
-            fragment = data[int(Parser.PAGESIZE * j / 3): int(Parser.PAGESIZE * (j + 1) / 3)]
+        for j in range(Parser.MEAN_GAP_DIM):
+            fragment = data[int(Parser.PAGESIZE * j / Parser.MEAN_GAP_DIM):
+                            int(Parser.PAGESIZE * (j + 1) / Parser.MEAN_GAP_DIM)]
             peaks = Parser.find_peaks_sorted(fragment)
             valleys = Parser.find_valley_sorted(fragment)
             if len(peaks) == 0:
@@ -209,13 +210,17 @@ class Model(object):
         print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
         PresentationModel.write_to_file(self._mode, xs, ys)
         """
-        SUFFIX = 'XYZ'
-        Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, SUFFIX)
+        suffix = 'XYZ'
+        if Parser.MEAN_GAP_DIM == 3:
+            Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
+        else:
+            Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
+
         # for i in range(self._mode):
         #     Drawer.plot_all_2d_scatter(self._original_data[i], i, self._filename, self._labels[i])
         # for i in range(self._mode):
-        #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], SUFFIX)
-        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, SUFFIX)
+        #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], suffix)
+        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
 
     def train(self, train_data_list):
         xs = []
@@ -390,7 +395,7 @@ class Drawer(object):
     COLORS = ['blue', 'orange', 'green']
 
     @staticmethod
-    def plot_all_2d_scatter(raw_data, index, title='', suffix=''):
+    def plot_2d_scatter_origin(raw_data, index, title='', suffix=''):
         # pre-process
         dim = len(raw_data)
         data_list = []
@@ -417,6 +422,36 @@ class Drawer(object):
                 plt.scatter(x, y, label=marks[i] + marks[j], color=Drawer.COLORS[index], alpha=0.2)
                 ax.legend()
                 plt.savefig(title + '_' + suffix + '[' + marks[i] + marks[j] + ']' + '2d.png')
+
+    @staticmethod
+    def plot_2d_scatter_mean_gap(raw_data, title='', labels=[], suffix=''):
+        fig, ax = plt.subplots()
+        plt.xlabel('meanGap1 (mg)')
+        plt.ylabel('meanGap2 (mg)')
+        ax.set_title('Scatters of Mean Gaps in 2D (' + title + ')' + '[' + suffix + ']')
+
+        # pre-process
+        dim = len(raw_data)
+        data_list = []
+        for i in range(dim):
+            data_list.append(Parser.sliding(raw_data[i]))
+
+        for i in range(dim):
+            gap_list = []
+            for k in range(len(data_list[i])):
+                gap_list.append(Parser.find_gaps(data_list[i][k]))
+
+            now_list = [[], []]
+            for j in range(len(gap_list)):
+                for k in range(2):
+                    now_list[k].append(gap_list[j][k])
+
+            plt.scatter(now_list[0], now_list[1], label=labels[i])
+
+        ax.legend()
+
+        plt.savefig(title + '[' + suffix + ']' + '2D-mean-gap.png')
+        # plt.show()
 
     @staticmethod
     def plot_3d_scatter(raw_data, title='', labels=[], suffix=''):

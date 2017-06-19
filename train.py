@@ -22,9 +22,7 @@ def main(argv):
 if __name__ == '__main__':
 
     test_data = ['motor_0504_4Y6M',
-                 'motor_0504_4Y6M_2',
                  'motor_0504_4Y7M',
-                 'motor_0504_4Y7M_2',
                  'motor_0504_5Y']
     for data in test_data:
         main([data])
