@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from collections import deque
+import statistics
 
 from sklearn.svm import SVC
 from sklearn import decomposition
@@ -13,8 +14,9 @@ class Parser(object):
     """
     PAGESIZE = 100
     TOP_PEAK_PERCENT = 10
-    DATA_FOLDER_PATH = 'recorded_original_data//position-based//'
+    DATA_FOLDER_PATH = 'recorded_original_data//'
     MEAN_GAP_DIM = 3
+    ORIGINAL_ZERO_ADJUST = False
 
     @staticmethod
     def read(filename):
@@ -139,6 +141,21 @@ class Parser(object):
         return records
 
     @staticmethod
+    def do_zero_adjust(records):
+        rd = [[], [], []]
+        for k in range(len(records)):
+            for j in range(3):
+                rd[j].append(records[k][j])
+        for j in range(3):
+            mu = statistics.mean(rd[j])
+            for k in range(len(rd[j])):
+                rd[j][k] -= mu
+        result = []
+        for k in range(len(rd[0])):
+            result.append([rd[j][k] for j in range(3)])
+        return result
+
+    @staticmethod
     def find_valley_sorted(xs, ratio=TOP_PEAK_PERCENT):
         valleys = []
         pagesize = len(xs)
@@ -194,6 +211,8 @@ class Model(object):
         self._original_data = []
         for i in range(self._mode):
             self._original_data.append(Parser.read(file_list[i]))
+            if Parser.ORIGINAL_ZERO_ADJUST:
+                self._original_data[i] = Parser.do_zero_adjust(self._original_data[i])
 
         self._raw_data = []
         for i in range(self._mode):
@@ -217,10 +236,10 @@ class Model(object):
             Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
 
         # for i in range(self._mode):
-        #     Drawer.plot_all_2d_scatter(self._original_data[i], i, self._filename, self._labels[i])
+        #     Drawer.plot_2d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
         # for i in range(self._mode):
         #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], suffix)
-        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
+        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
 
     def train(self, train_data_list):
         xs = []
@@ -392,7 +411,7 @@ class AnalogData(object):
 
 class Drawer(object):
 
-    COLORS = ['blue', 'orange', 'green']
+    COLORS = ['blue', 'orange', 'green', 'red']
 
     @staticmethod
     def plot_2d_scatter_origin(raw_data, index, title='', suffix=''):
@@ -478,7 +497,7 @@ class Drawer(object):
                 for k in range(3):
                     now_list[k].append(gap_list[j][k])
 
-            ax.scatter(now_list[0], now_list[1], now_list[2], label=labels[i])
+            ax.scatter(now_list[0], now_list[1], now_list[2], color=Drawer.COLORS[i], label=labels[i])
 
         ax.legend()
 
@@ -491,7 +510,7 @@ class Drawer(object):
         y_label = 'acceleration (mg)'
         title = 'Original Data of X,Y,Z (' + filename + '_' + label + ') [' + suffix + ']'
 
-        fig, ax = plt.subplots(3, sharex='all')
+        fig, ax = plt.subplots(3, sharex='all', sharey='all')
 
         rd = [[], [], []]
         for k in range(len(raw_data)):
@@ -500,12 +519,14 @@ class Drawer(object):
 
         plt.xlabel(x_label)
         plt.ylabel(y_label)
+        # plt.ylim(-50, 50)
         ax[0].set_title(title)
 
         axis_labels = ['X', 'Y', 'Z']
         for i in range(3):
             x = np.arange(0, len(rd[i]))
             y = rd[i]
+
             ax[i].plot(x, y, color=Drawer.COLORS[index], label=axis_labels[i])
             ax[i].legend()
 
