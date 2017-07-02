@@ -18,6 +18,15 @@ class Parser(object):
     MEAN_GAP_DIM = 3
     ORIGINAL_ZERO_ADJUST = False
 
+    HARD_COMP = [[-0.91985032, -0.06703556,  0.3864992 ],
+                 [-0.91985032, -0.06703556, 0.3864992]]
+    """
+    [0.71000981,  0.15992345,  0.68579192], # HOOK
+    [-0.17194572, -0.17941319,  0.96863078], # BODY
+    [0.84898579,  0.39951426, -0.34584893]] # TOP
+    [-0.91985032, -0.06703556,  0.3864992 ] # DRY
+    """
+
     @staticmethod
     def read(filename):
         """
@@ -30,7 +39,7 @@ class Parser(object):
         return np.array(records)
 
     @staticmethod
-    def parse(buffer):
+    def parse(buffer, shift=-1):
         """
         Do PCA with some filters; e.g. discard a noise axis.
 
@@ -39,8 +48,18 @@ class Parser(object):
         """
         # for k in range(len(buffer)):
         #     buffer[k][0] = 0.0
-        records = Parser.__get_pca(buffer, 1)
-        return records
+        if shift >= 0:
+            res = []
+            for i in range(len(buffer)):
+                pca = 0
+                for k in range(3):
+                    pca += buffer[i][k] * Parser.HARD_COMP[shift][k]
+                res.append([pca])
+            return res
+        else:
+            records = Parser.__get_pca(buffer, 1)
+            print(records)
+            return records
 
     @staticmethod
     def sliding(buffer):
@@ -216,19 +235,19 @@ class Model(object):
 
         self._raw_data = []
         for i in range(self._mode):
-            self._raw_data.append(Parser.parse(self._original_data[i]))
+            self._raw_data.append(Parser.parse(self._original_data[i], i))
 
     def run(self):
-        """
-        max_score = 0
-        xs, ys = None, None
-        for offset in range(Model._FOLD_COUNT):
-            score, x, y = self.__validate(offset)
-            if score > max_score:
-                max_score, xs, ys = score, x, y
-        print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-        PresentationModel.write_to_file(self._mode, xs, ys)
-        """
+
+        # max_score = 0
+        # xs, ys = None, None
+        # for offset in range(Model._FOLD_COUNT):
+        #     score, x, y = self.__validate(offset)
+        #     if score > max_score:
+        #         max_score, xs, ys = score, x, y
+        # print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+        # PresentationModel.write_to_file(self._mode, xs, ys)
+
         suffix = 'XYZ'
         if Parser.MEAN_GAP_DIM == 3:
             Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
@@ -291,7 +310,7 @@ class Model(object):
             res /= len(test_data_list[i])
             print('success ratio = %.1f%%\n' % (res * 100))
             score.append(res)
-        return np.mean(score), xs, ys
+        return np.min(score), xs, ys
 
     @staticmethod
     def predict(target_gap, clf):
