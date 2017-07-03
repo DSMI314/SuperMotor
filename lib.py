@@ -3,6 +3,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from collections import deque
 import statistics
+import sys
 
 from sklearn.svm import SVC
 from sklearn import decomposition
@@ -18,7 +19,7 @@ class Parser(object):
     MEAN_GAP_DIM = 3
     ORIGINAL_ZERO_ADJUST = False
 
-    HARD_COMP = [[-0.91985032, -0.06703556,  0.3864992 ],
+    HARD_COMP = [[-0.91985032, -0.06703556,  0.3864992],
                  [-0.91985032, -0.06703556, 0.3864992]]
     """
     [0.71000981,  0.15992345,  0.68579192], # HOOK
@@ -39,7 +40,7 @@ class Parser(object):
         return np.array(records)
 
     @staticmethod
-    def parse(buffer, shift=-1):
+    def parse(buffer, means=None, components=None):
         """
         Do PCA with some filters; e.g. discard a noise axis.
 
@@ -48,18 +49,18 @@ class Parser(object):
         """
         # for k in range(len(buffer)):
         #     buffer[k][0] = 0.0
-        if shift >= 0:
+        if components is not None:
             res = []
             for i in range(len(buffer)):
                 pca = 0
                 for k in range(3):
-                    pca += buffer[i][k] * Parser.HARD_COMP[shift][k]
+                    pca += (buffer[i][k] - means[k]) * components[k]
                 res.append([pca])
             return res
         else:
-            records = Parser.__get_pca(buffer, 1)
-            print(records)
-            return records
+            records, means, components = Parser.__get_pca(buffer, 1)
+            # print(records)
+            return records, means, components
 
     @staticmethod
     def sliding(buffer):
@@ -115,8 +116,8 @@ class Parser(object):
         records = pca.transform(records)
         print('mean = ' + str(pca.mean_))
         # print coefficient
-        print(pca.components_)
-        return records
+        print('components = ' + str(pca.components_))
+        return records, pca.mean_, pca.components_
 
     @staticmethod
     def __load_csv(filename):
@@ -217,6 +218,7 @@ class Model(object):
     """
 
     _FOLD_COUNT = 5
+    _SAMPLE_RATE = 20
 
     def __init__(self, filename, labels):
         self._filename = filename
@@ -234,31 +236,57 @@ class Model(object):
                 self._original_data[i] = Parser.do_zero_adjust(self._original_data[i])
 
         self._raw_data = []
+        self._components = []
+        self._means = []
         for i in range(self._mode):
-            self._raw_data.append(Parser.parse(self._original_data[i], i))
+            result, mean, comp = Parser.parse(self._original_data[i])
+            self._raw_data.append(result)
+            self._means.append(mean)
+            self._components.append(comp)
 
     def run(self):
 
-        # max_score = 0
-        # xs, ys = None, None
-        # for offset in range(Model._FOLD_COUNT):
-        #     score, x, y = self.__validate(offset)
-        #     if score > max_score:
-        #         max_score, xs, ys = score, x, y
-        # print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-        # PresentationModel.write_to_file(self._mode, xs, ys)
+        max_score = 0
+        best_envelope = []
+        xs, ys = None, None
+        for offset in range(Model._FOLD_COUNT):
+            score, envelope, x, y = self.__validate(offset)
+            if score > max_score:
+                max_score, best_envelope, xs, ys = score, envelope, x, y
+        print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+        PresentationModel.write_to_file(self._mode, self._means, self._components, xs, ys)
 
         suffix = 'XYZ'
-        if Parser.MEAN_GAP_DIM == 3:
-            Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
-        else:
-            Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
+        # if Parser.MEAN_GAP_DIM == 3:
+        #     Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
+        # else:
+        #     Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
 
         # for i in range(self._mode):
         #     Drawer.plot_2d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
         # for i in range(self._mode):
+        #     Drawer.plot_3d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
+        # for i in range(self._mode):
         #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], suffix)
-        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
+        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
+
+    def run2(self, time_interval):
+        # time_interval (seconds)
+        if self._mode > 1:
+            print('Error: Only accept at only 1 file.')
+            sys.exit(2)
+        train_data_list = []
+        train_data = []
+        for i in range(self._mode):
+            train_data.append(self._raw_data[i][:time_interval * Model._SAMPLE_RATE])
+            train_data_list.append(Parser.sliding(train_data[i]))
+        xs, ys = self.train(train_data_list)
+        gaps = []
+        for j in range(len(xs)):
+            gaps.append(xs[j][0])
+        mean = statistics.mean(gaps)
+        std = statistics.pstdev(gaps, mean)
+        PresentationModel.write_to_file2(self._means, self._components, mean, std)
 
     def train(self, train_data_list):
         xs = []
@@ -295,22 +323,26 @@ class Model(object):
         clf = SVC(kernel='linear')
         clf.fit(xs, ys)
         score = []
+        envelope = []
         for i in range(self._mode):
             print('now at mode %d' % i)
             result = []
+            gaps = []
             res = 0
             for j in range(len(test_data_list[i])):
                 gap = np.mean(Parser.find_gaps(test_data_list[i][j]))
-                print(gap)
+                # print(gap)
+                gaps.append(gap)
                 pd = Model.predict(gap, clf)
                 result.append(pd)
                 if pd == i:
                     res += 1
-            print(result)
+            # print(result)
             res /= len(test_data_list[i])
             print('success ratio = %.1f%%\n' % (res * 100))
             score.append(res)
-        return np.min(score), xs, ys
+            envelope.append((statistics.mean(gaps), statistics.variance(gaps)))
+        return np.mean(score), envelope, xs, ys
 
     @staticmethod
     def predict(target_gap, clf):
@@ -334,6 +366,11 @@ class PresentationModel(object):
         # read feature to build SVM
         fp = open(training_model_file, 'r')
         self._mode = int(fp.readline())
+
+        self._components = []
+        for token in fp.readline().split(','):
+            self._components.append(float(token))
+
         xs = []
         ys = []
         for token in fp.readline().split(','):
@@ -355,11 +392,23 @@ class PresentationModel(object):
         print(xs)
 
     @staticmethod
-    def write_to_file(mode_count, xs, ys):
+    def write_to_file(mode_count, components, xs, ys):
         fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
         fp.write(str(mode_count) + '\n')
+        PresentationModel.__write_by_line(fp, components)
         PresentationModel.__write_by_line(fp, xs)
         PresentationModel.__write_by_line(fp, ys)
+        fp.close()
+
+    @staticmethod
+    def write_to_file2(means, components, mean, std):
+        fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
+        for i in range(len(means)):
+            PresentationModel.__write_by_line(fp, means[i])
+        for i in range(len(components)):
+            PresentationModel.__write_by_line(fp, components[i])
+        fp.write(str(mean) + '\n')
+        fp.write(str(std) + '\n')
         fp.close()
 
     @staticmethod
@@ -436,12 +485,9 @@ class Drawer(object):
     def plot_2d_scatter_origin(raw_data, index, title='', suffix=''):
         # pre-process
         dim = len(raw_data)
-        data_list = []
-        for i in range(dim):
-            data_list.append(Parser.sliding(raw_data[i]))
 
         rd = [[], [], []]
-        for k in range(len(raw_data)):
+        for k in range(dim):
             for j in range(3):
                 rd[j].append(raw_data[k][j])
 
@@ -492,6 +538,33 @@ class Drawer(object):
         # plt.show()
 
     @staticmethod
+    def plot_3d_scatter_origin(raw_data, index, title='', suffix=''):
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        # pre-process
+        dim = len(raw_data)
+        data_list = []
+        for i in range(dim):
+            data_list.append(Parser.sliding(raw_data[i]))
+
+        ax.set_xlabel('acceleration at X axis (mg)')
+        ax.set_ylabel('acceleration at Y axis (mg)')
+        ax.set_zlabel('acceleration at Z axis (mg)')
+        ax.set_title('Scatters of Original Data in 3D (' + title + '_' + suffix + ')')
+
+        rd = [[], [], []]
+        for k in range(len(raw_data)):
+            for j in range(3):
+                rd[j].append(raw_data[k][j])
+
+        ax.scatter(rd[0], rd[1], rd[2], color=Drawer.COLORS[index], label='XYZ')
+
+        ax.legend()
+
+        plt.savefig(title + '[' + suffix + ']' + '3D-origin.png')
+        # plt.show()
+
+    @staticmethod
     def plot_3d_scatter(raw_data, title='', labels=[], suffix=''):
         fig = plt.figure()
         ax = Axes3D(fig)
@@ -519,8 +592,6 @@ class Drawer(object):
             ax.scatter(now_list[0], now_list[1], now_list[2], color=Drawer.COLORS[i], label=labels[i])
 
         ax.legend()
-
-        plt.savefig(title + '[' + suffix + ']' + '.png')
         # plt.show()
 
     @staticmethod
