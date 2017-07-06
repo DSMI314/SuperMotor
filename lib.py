@@ -16,7 +16,7 @@ class Parser(object):
     PAGESIZE = 100
     TOP_PEAK_PERCENT = 10
     DATA_FOLDER_PATH = 'recorded_original_data//'
-    MEAN_GAP_DIM = 3
+    MEAN_GAP_DIM = 2
     ORIGINAL_ZERO_ADJUST = False
 
     HARD_COMP = [[-0.91985032, -0.06703556,  0.3864992],
@@ -61,6 +61,19 @@ class Parser(object):
             records, means, components = Parser.__get_pca(buffer, 1)
             # print(records)
             return records, means, components
+
+    @staticmethod
+    def slice(buffer, axis_index):
+        res = []
+        mean = [0.0] * 3
+        for i in range(len(buffer)):
+            res.append([buffer[i][axis_index]])
+            mean[axis_index] += buffer[i][axis_index]
+        mean[axis_index] /= len(buffer)
+        components = [0.0] * 3
+        components[axis_index] = 1.0
+        components = np.array([components])
+        return res, mean, components
 
     @staticmethod
     def sliding(buffer):
@@ -239,28 +252,28 @@ class Model(object):
         self._components = []
         self._means = []
         for i in range(self._mode):
-            result, mean, comp = Parser.parse(self._original_data[i])
+            # result, mean, comp = Parser.parse(self._original_data[i])
+            result, mean, comp = Parser.slice(self._original_data[i], 2)
             self._raw_data.append(result)
             self._means.append(mean)
             self._components.append(comp)
 
     def run(self):
+        # max_score = 0
+        # best_envelope = []
+        # xs, ys = None, None
+        # for offset in range(Model._FOLD_COUNT):
+        #     score, envelope, x, y = self.__validate(offset)
+        #     if score > max_score:
+        #         max_score, best_envelope, xs, ys = score, envelope, x, y
+        # print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+        # PresentationModel.write_to_file(self._mode, self._means, self._components, xs, ys)
 
-        max_score = 0
-        best_envelope = []
-        xs, ys = None, None
-        for offset in range(Model._FOLD_COUNT):
-            score, envelope, x, y = self.__validate(offset)
-            if score > max_score:
-                max_score, best_envelope, xs, ys = score, envelope, x, y
-        print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-        PresentationModel.write_to_file(self._mode, self._means, self._components, xs, ys)
-
-        suffix = 'XYZ'
-        # if Parser.MEAN_GAP_DIM == 3:
-        #     Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
-        # else:
-        #     Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
+        suffix = 'Z'
+        if Parser.MEAN_GAP_DIM == 3:
+            Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
+        else:
+            Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
 
         # for i in range(self._mode):
         #     Drawer.plot_2d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
@@ -268,10 +281,15 @@ class Model(object):
         #     Drawer.plot_3d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
         # for i in range(self._mode):
         #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], suffix)
-        # Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
+        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
 
     def run2(self, time_interval):
-        # time_interval (seconds)
+        """
+        Consider after PCA
+
+        :param time_interval: time range in seconds
+        :return:
+        """
         if self._mode > 1:
             print('Error: Only accept at only 1 file.')
             sys.exit(2)
@@ -287,6 +305,35 @@ class Model(object):
         mean = statistics.mean(gaps)
         std = statistics.pstdev(gaps, mean)
         PresentationModel.write_to_file2(self._means, self._components, mean, std)
+
+    def run3(self, time_interval):
+        """
+        Consider only one axis.
+
+        :param time_interval: time range in seconds
+        :return:
+        """
+        if self._mode > 1:
+            print('Error: Only accept at only 1 file.')
+            sys.exit(2)
+        now_max_gap = 0
+        now_max_gap_index = None
+        now_raw_data = None
+        for axis_index in range(3):
+            raw_data, _, _ = Parser.slice(self._original_data[0][:time_interval * Model._SAMPLE_RATE], axis_index)
+            raw_data = Parser.sliding(raw_data)
+            gap = np.mean(Parser.find_gaps(raw_data))
+            if gap > now_max_gap:
+                now_max_gap, now_max_gap_index, now_raw_data = gap, axis_index, raw_data
+        xs, ys = self.train([now_raw_data])
+        gaps = []
+        for j in range(len(xs)):
+            gaps.append(xs[j][0])
+        mean = statistics.mean(gaps)
+        print(xs)
+        std = statistics.pstdev(gaps, mean)
+        PresentationModel.write_to_file3(now_max_gap_index, self._means, self._components, mean, std)
+        print("!!!!!!!!!!! " + str(now_max_gap_index) + " !!!!!!!!!!!!!!!")
 
     def train(self, train_data_list):
         xs = []
@@ -403,6 +450,18 @@ class PresentationModel(object):
     @staticmethod
     def write_to_file2(means, components, mean, std):
         fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
+        for i in range(len(means)):
+            PresentationModel.__write_by_line(fp, means[i])
+        for i in range(len(components)):
+            PresentationModel.__write_by_line(fp, components[i])
+        fp.write(str(mean) + '\n')
+        fp.write(str(std) + '\n')
+        fp.close()
+
+    @staticmethod
+    def write_to_file3(index, means, components, mean, std):
+        fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
+        fp.write(str(index) + '\n')
         for i in range(len(means)):
             PresentationModel.__write_by_line(fp, means[i])
         for i in range(len(components)):

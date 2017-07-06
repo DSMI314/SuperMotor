@@ -6,7 +6,7 @@ import timeit
 
 
 # @profile
-def main(argv):
+def main(argv, self_test):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
         sys.exit(2)
@@ -15,15 +15,15 @@ def main(argv):
         sys.exit(2)
 
     filename = argv[0]
-    labels = ['TOP']
+    labels = ['on']
     print('>> Processing file \"' + filename + '\"...')
 
-    if len(labels) == 1:
+    if self_test:
         print('>> The machine is training (using ENVELOPE)...')
         timer_start = timeit.default_timer()
 
         model = Model(filename, labels)
-        model.run2(60)
+        model.run3(3000)
 
         print('>> Completed the training (using ENVELOPE)!')
         timer_end = timeit.default_timer()
@@ -42,7 +42,7 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0504_5Y']
+    test_data = ['motor_0706_fan2']
     for data in test_data:
-        main([data])
+        main([data], True)
     # main(sys.argv[1:])
