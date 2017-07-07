@@ -166,6 +166,46 @@ def file_process(fp):
     print(ratios)
 
 
+def file_process2(fp):
+    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
+    means = []
+    for token in fpp.readline().split(','):
+        means.append(float(token))
+
+    components = []
+    for token in fpp.readline()[1:-2].split(' '):
+        if len(token) > 0:
+            components.append(float(token))
+    mu = float(fpp.readline())
+    std = float(fpp.readline())
+    print(components)
+    analog_data = AnalogData(Parser.PAGESIZE)
+
+    print('>> Start to receive data from FILE...')
+
+    line_number = 0
+    for file_line in fp:
+        line_number += 1
+        line = file_line.split(',')
+        data = [float(val) for val in line[1:]]
+
+        if len(data) != 3:
+            continue
+        analog_data.add(data)
+        data_list = analog_data.merge_to_list()
+
+        a = []
+        for k in range(len(data_list[0])):
+            a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
+
+        real_data = Parser.parse(a, means, components)
+
+        gap = np.mean(Parser.find_gaps(real_data))
+
+        if line_number > Parser.PAGESIZE and gap < mu - 5 * std or gap > mu + 5 * std:
+            print(">> %d row WARNING!!! %f" % (line_number, gap))
+
+
 def file_process3(fp):
     fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
     axis_select = int(fpp.readline())
@@ -196,7 +236,8 @@ def file_process3(fp):
         for k in range(len(data_list[0])):
             a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
 
-        real_data, _, _ = Parser.slice(a, axis_select)
+        # real_data, _, _ = Parser.slice(a, axis_select)
+        real_data = Parser.parse(a)
         gap = np.mean(Parser.find_gaps(real_data))
 
         if line_number > Parser.PAGESIZE and gap < mu - 5 * std or gap > mu + 5 * std:
@@ -210,7 +251,8 @@ def main(argv):
     elif len(argv) == 1:
         fp = open(argv[0], 'r')
         # file_process(fp)
-        file_process3(fp)
+        file_process2(fp)
+        # file_process3(fp)
         fp.close()
     else:
         print('Error: Only accept at most 1 parameter.')

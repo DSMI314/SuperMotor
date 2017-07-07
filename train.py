@@ -23,7 +23,7 @@ def main(argv, self_test):
         timer_start = timeit.default_timer()
 
         model = Model(filename, labels)
-        model.run3(3000)
+        model.run2(3000)
 
         print('>> Completed the training (using ENVELOPE)!')
         timer_end = timeit.default_timer()

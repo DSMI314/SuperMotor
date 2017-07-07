@@ -252,8 +252,8 @@ class Model(object):
         self._components = []
         self._means = []
         for i in range(self._mode):
-            # result, mean, comp = Parser.parse(self._original_data[i])
-            result, mean, comp = Parser.slice(self._original_data[i], 2)
+            result, mean, comp = Parser.parse(self._original_data[i])
+            # result, mean, comp = Parser.slice(self._original_data[i], 2)
             self._raw_data.append(result)
             self._means.append(mean)
             self._components.append(comp)
@@ -269,7 +269,7 @@ class Model(object):
         # print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
         # PresentationModel.write_to_file(self._mode, self._means, self._components, xs, ys)
 
-        suffix = 'Z'
+        suffix = 'XYZ'
         if Parser.MEAN_GAP_DIM == 3:
             Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
         else:
