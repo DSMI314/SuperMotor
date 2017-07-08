@@ -5,7 +5,7 @@ from memory_profiler import profile
 import timeit
 
 
-# @profile
+@profile
 def main(argv, self_test):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
@@ -23,7 +23,7 @@ def main(argv, self_test):
         timer_start = timeit.default_timer()
 
         model = Model(filename, labels)
-        model.run2(3000)
+        model.run3(60)
 
         print('>> Completed the training (using ENVELOPE)!')
         timer_end = timeit.default_timer()

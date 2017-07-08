@@ -322,7 +322,11 @@ class Model(object):
         for axis_index in range(3):
             raw_data, _, _ = Parser.slice(self._original_data[0][:time_interval * Model._SAMPLE_RATE], axis_index)
             raw_data = Parser.sliding(raw_data)
-            gap = np.mean(Parser.find_gaps(raw_data))
+            gaps = []
+            for k in range(len(raw_data)):
+                gaps.append(Parser.find_gaps(raw_data[k]))
+            gap = np.mean(gaps)
+            print(gap)
             if gap > now_max_gap:
                 now_max_gap, now_max_gap_index, now_raw_data = gap, axis_index, raw_data
         xs, ys = self.train([now_raw_data])
@@ -330,7 +334,7 @@ class Model(object):
         for j in range(len(xs)):
             gaps.append(xs[j][0])
         mean = statistics.mean(gaps)
-        print(xs)
+        print(mean)
         std = statistics.pstdev(gaps, mean)
         PresentationModel.write_to_file3(now_max_gap_index, self._means, self._components, mean, std)
         print("!!!!!!!!!!! " + str(now_max_gap_index) + " !!!!!!!!!!!!!!!")
