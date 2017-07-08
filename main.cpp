@@ -3,36 +3,38 @@
 #include <iostream>
 #include <cstdio>
 #include <vector>
-#include "PCA.h"
+#include "Model.h"
+#include <windows.h>
+#include <psapi.h>
+#include <time.h>
 
-#define MAX_COUNT 100
+#pragma comment(lib, "strmiids.lib") 
+#pragma comment(lib, "psapi.lib")
+PROCESS_MEMORY_COUNTERS pmc;
+
+#define DIV 1024 // Convert Byte to KB
 
 using Eigen::MatrixXd;
 using namespace std;
 
 
-
-vector <Vector3d> Open(const char* filename) {
-	FILE* fp;
-	errno_t err = fopen_s(&fp, filename, "r");
-	if (err != 0)
-		return vector <Vector3d>();
-
-	vector <Vector3d> V;
-	char* line = new char[100];
-	while ((fgets(line, MAX_COUNT, fp)) != 0) {
-		char* token = strtok(line, ",");
-		int arr[3] = { 0 };
-		for (int i = 0; i < 3; i++) {
-			token = strtok(NULL, ",");
-			arr[i] = atoi(token);
-		}
-		V.emplace_back(Vector3d(arr[0], arr[1], arr[2]));
-	}
-	return V;
-}
-
 int main() {
-	vector <Vector3d> V = Open("recorded_original_data//motor_0706_fan2_on.csv");
 
+	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)); 
+	auto before_memory_used = pmc.PeakWorkingSetSize;
+	double before_time = clock();
+
+
+	Model model = Model("recorded_original_data//motor_0706_fan2_on.csv");
+	model.Run3(60);
+
+	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)); 
+	auto after_memory_used = pmc.PeakWorkingSetSize;
+	double after_time = clock();
+
+	auto memory_used = after_memory_used - before_memory_used;
+	double time_used = after_time - before_time;
+
+	cout << "time usage:" << time_used / CLOCKS_PER_SEC << " seconds" << endl; //unit in bytes
+	cout << "memory usage:" << memory_used / DIV << " KB" << endl; //unit in bytes
 }
