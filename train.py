@@ -42,7 +42,7 @@ def main(argv, self_test):
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0706_fan2']
+    test_data = ['motor_0504_4Y7M_2_HOOK']
     for data in test_data:
         main([data], True)
     # main(sys.argv[1:])
