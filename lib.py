@@ -199,7 +199,7 @@ class Parser(object):
             nextt = xs[j + 1]
             # valley detected
             if now < prevv and now < nextt:
-                valleys.extend(now)
+                valleys.append(now)
 
         valleys.sort()
         valleys = valleys[:int(pagesize * ratio / 100)]
@@ -217,7 +217,7 @@ class Parser(object):
             # peak detected
             if now > prevv and now > nextt:
                 # stored absolute value
-                peaks.extend(now)
+                peaks.append(now)
 
         peaks.sort()
         peaks.reverse()
@@ -402,7 +402,6 @@ class Model(object):
 
 class PresentationModel(object):
     """
-
     """
     TRAINING_MODEL_FILE = 'motorcycle.txt'
     TARGET_FILE = 'prediction.txt'

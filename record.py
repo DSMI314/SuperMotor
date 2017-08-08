@@ -13,7 +13,7 @@ if __name__ == '__main__':
         exit()
 
     # ser_com4 = serial.Serial("COM4", 9600)
-    ser_com3 = serial.Serial("COM3", 9600)
+    ser_com3 = serial.Serial("COM1", 9600)
     # ser_com6 = serial.Serial("COM6", 9600)
     # first raw data may got some problem, drop it
     for _ in range(20):

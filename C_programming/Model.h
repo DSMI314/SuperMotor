@@ -17,13 +17,9 @@ class Model {
 
 public:
 	Model(const char* filename);
-	vector <double> FindPeaksSorted(vector <double> xs, int ratio);
-	vector <double> FindValleysSorted(vector <double> xs, int ratio);
-	vector <double> FindGaps(vector <double> data);
+	double FindGaps(vector <double> peaks, vector <double> valleys);
 	void Run3(int time_interval);
-	vector <vector<double> > Sliding(vector <double> buffer);
 	void WriteToFile3(int index, double mean, double std);
-
 
 protected:
 	double GetMean(vector <double> xs);

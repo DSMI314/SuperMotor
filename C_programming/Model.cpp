@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <functional>
 #include <numeric>
+#include <deque>
 
 using namespace std;
 
@@ -11,59 +12,15 @@ Model::Model(const char* filename) {
 	this->_original_data = Open(filename);
 }
 
-vector <double> Model::FindPeaksSorted(vector <double> xs, int ratio = TOP_PEAK_PERCENT) {
-	int pagesize = xs.size();
-	vector <double> res;
-	for (int i = 1; i < pagesize - 1; i++) {
-		if (xs[i] > xs[i - 1] && xs[i] > xs[i + 1])
-			res.emplace_back(xs[i]);
-	}
-	sort(res.begin(), res.end());
-	reverse(res.begin(), res.end());
-	res.resize(pagesize * ratio / 100);
-	return res;
+double Model::FindGaps(vector <double> peaks, vector <double> valleys) {
+	int pos = PAGE_SIZE * TOP_PEAK_PERCENT / 100;
+	int peak_pos = min(pos, (int)peaks.size());
+	int valley_pos = min(pos, (int)valleys.size());
+	double peak_ave = accumulate(peaks.end() - peak_pos, peaks.end(), 0.0) / peak_pos;
+	double valley_ave = accumulate(valleys.begin(), valleys.begin() + valley_pos, 0.0) / valley_pos;
+	return peak_ave - valley_ave;
 }
 
-vector <double> Model::FindValleysSorted(vector <double> xs, int ratio = TOP_PEAK_PERCENT) {
-	int pagesize = xs.size();
-	vector <double> res;
-	for (int i = 1; i < pagesize - 1; i++) {
-		if (xs[i] < xs[i - 1] && xs[i] < xs[i + 1])
-			res.emplace_back(xs[i]);
-	}
-	sort(res.begin(), res.end());
-	res.resize(pagesize * ratio / 100);
-	return res;
-}
-
-vector <double> Model::FindGaps(vector <double> data) {
-	vector <double> gap;
-	for (int j = 0; j < MEAN_GAP_DIM; j++) {
-		vector <double> fragment;
-		for (int k = PAGE_SIZE * j / MEAN_GAP_DIM; k < PAGE_SIZE * (j + 1) / MEAN_GAP_DIM; k++)
-			fragment.emplace_back(data[k]);
-		vector <double> peaks = FindPeaksSorted(fragment);
-		vector <double> valleys = FindValleysSorted(fragment);
-		if (peaks.empty())
-			peaks.emplace_back(0.0);
-		if (valleys.empty())
-			valleys.emplace_back(0.0);
-		gap.emplace_back(GetMean(peaks) - GetMean(valleys));
-	}
-	return gap;
-}
-
-vector <vector <double> > Model::Sliding(vector <double> buffer) {
-	vector <vector <double> > result;
-	int len = buffer.size();
-	for (int j = PAGE_SIZE; j < len; j++) {
-		vector <double> unit;
-		for (int k = j - PAGE_SIZE; k < j; k++)
-			unit.emplace_back(buffer[k]);
-		result.emplace_back(unit);
-	}
-	return result;
-}
 
 void Model::WriteToFile3(int index, double mean, double std) {
 	FILE* fp = fopen(Model::TRAINING_MODEL_FILE, "w");
@@ -79,21 +36,46 @@ void Model::Run3(int time_interval) {
 	double now_max_gap = 0.0;
 	int now_max_gap_index = -1;
 	vector <double> now_gaps = vector <double>();
+
+
 	for (int axis_index = 0; axis_index < 3; axis_index++) {
 		vector <double> buffer;
 		for (int j = 0; j < end_pos; j++)
 			buffer.emplace_back(_original_data[j](axis_index));
-		auto raw_data = Sliding(buffer);
-		assert(raw_data[0].size() == PAGE_SIZE);
+
+		vector <double> valleys = vector <double>();
+		vector <double> peaks = vector <double>();
+
+		assert(_original_data.size() > PAGE_SIZE);
+		for (int j = 1; j < PAGE_SIZE - 1; j++) {
+			if (buffer[j] > buffer[j - 1] && buffer[j] > buffer[j + 1])
+				peaks.emplace_back(buffer[j]);
+			if (buffer[j] < buffer[j - 1] && buffer[j] < buffer[j + 1])
+				valleys.emplace_back(buffer[j]);
+		}
+		sort(valleys.begin(), valleys.end());
+		sort(peaks.begin(), peaks.end());
+
 		vector <double> gaps;
-		for (int k = 0; k < raw_data.size();k++){
-			vector <double> block = raw_data[k];
-			gaps.emplace_back(GetMean(FindGaps(block)));
+		gaps.emplace_back(FindGaps(peaks, valleys));
+		for (int j = PAGE_SIZE; j < end_pos; j++) {
+			int s = j - PAGE_SIZE + 1;
+			if (buffer[s] > buffer[s - 1] && buffer[s] > buffer[s + 1])
+				peaks.erase(find(peaks.begin(), peaks.end(), buffer[s]));
+			if (buffer[s] < buffer[s - 1] && buffer[s] < buffer[s + 1])
+				valleys.erase(find(valleys.begin(), valleys.end(), buffer[s]));
+
+			int e = j - 1;
+			if (buffer[e] > buffer[e - 1] && buffer[e] > buffer[e + 1])
+				peaks.insert(lower_bound(peaks.begin(), peaks.end(), buffer[e]), buffer[e]);
+			if (buffer[e] < buffer[e - 1] && buffer[e] < buffer[e + 1])
+				valleys.insert(lower_bound(valleys.begin(), valleys.end(), buffer[e]), buffer[e]);
+			gaps.emplace_back(FindGaps(peaks, valleys));
 		}
 	//	for (auto item : gaps)
 	//		printf("[%f] ", item);
 		double gap = GetMean(gaps);
-		printf("%f\n", gap);
+		printf("%lf\n", gap);
 		if (gap > now_max_gap) {
 			now_max_gap = gap;
 			now_max_gap_index = axis_index;
@@ -102,7 +84,7 @@ void Model::Run3(int time_interval) {
 	}
 	vector <double> gaps = now_gaps;
 	double mean = GetMean(gaps);
-	printf("!! %f\n", mean);
+	printf("!! %lf\n", mean);
 	double std = GetStd(gaps);
 	WriteToFile3(now_max_gap_index, mean, std);
 	printf("!!!!!!!! %d !!!!!!!!!!!!\n", now_max_gap_index);

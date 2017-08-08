@@ -25,7 +25,7 @@ int main() {
 	double before_time = clock();
 
 
-	Model model = Model("recorded_original_data//motor_0706_fan2_on.csv");
+	Model model = Model("E:\\Python\\SuperMotor\\recorded_original_data\\motor_0808_1_fan1.csv");
 	model.Run3(60);
 
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)); 

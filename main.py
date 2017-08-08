@@ -85,7 +85,7 @@ def real_time_process3():
     print('>> Start to receive data...')
 
     # open serial port
-    ser = serial.Serial("COM5", 9600)
+    ser = serial.Serial("COM1", 9600)
     for _ in range(20):
         ser.readline()
 
@@ -114,6 +114,59 @@ def real_time_process3():
             ser.flush()
             ser.close()
 
+            # reset file
+            fp = open(PresentationModel.TARGET_FILE, 'w')
+            fp.write('-1')
+            fp.close()
+
+
+def real_time_process4():
+    """
+    !!!! !!!!
+    :return:
+    """
+    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
+    axis_select = int(fpp.readline())
+
+    mu = float(fpp.readline())
+    std = float(fpp.readline())
+
+    fpp.close()
+    # plot parameters
+    analog_data = AnalogData(Parser.PAGESIZE)
+    print('>> Start to receive data...')
+
+    # open serial port
+    ser = serial.Serial("COM3", 9600)
+    for _ in range(20):
+        ser.readline()
+
+    while True:
+        try:
+            line = ser.readline().decode()
+            # print(line)
+            data = [float(val) for val in line.split(',')]
+            if len(data) == 3:
+                analog_data.add(data)
+                data_list = analog_data.merge_to_list()
+                # print(data_list)
+                # a = []
+                real_data = data_list[axis_select]
+                peak_ave = Parser.find_peaks_sorted(real_data)
+                valley_ave = Parser.find_valley_sorted(real_data)
+                gap = np.mean(peak_ave) - np.mean(valley_ave)
+                print(real_data)
+                # print(gap)
+                if gap < mu - 5 * std or gap > mu + 5 * std:
+                    print("warning!!!")
+                print('run')
+
+        except KeyboardInterrupt:
+            print('exiting')
+            break
+        finally:
+            # close serial
+            #
             # reset file
             fp = open(PresentationModel.TARGET_FILE, 'w')
             fp.write('-1')
@@ -247,7 +300,8 @@ def file_process3(fp):
 def main(argv):
     if len(argv) == 0:
         # real_time_process()
-        real_time_process3()
+        # real_time_process3()
+        real_time_process4()
     elif len(argv) == 1:
         fp = open(argv[0], 'r')
         # file_process(fp)
@@ -260,4 +314,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    real_time_process4()
+    # main(sys.argv[1:])
