@@ -3,33 +3,35 @@ import sys
 import time
 
 
-if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        FILENAME = sys.argv[1]
-        # out_com4 = open(FILENAME + "_COM4.csv", 'w')
-        out_com3 = open(FILENAME + "_COM3.csv", 'w')
-        # out_com6 = open(FILENAME + "_COM6.csv", 'w')
-    else:
-        exit()
+def main(argv):
+    _FILENAME = argv[0]
+    _PORT_NAME = argv[1]
 
-    # ser_com4 = serial.Serial("COM4", 9600)
-    ser_com3 = serial.Serial("COM1", 9600)
-    # ser_com6 = serial.Serial("COM6", 9600)
-    # first raw data may got some problem, drop it
+    # write data into this file.
+    fp_out = open(_FILENAME + ".csv", 'w')
+
+    # open the port which we entered.
+    ser = serial.Serial(_PORT_NAME, 9600)
+
+    # first some raw data may got some problem, drop it.
     for _ in range(20):
-        # ser_com4.readline()
-        ser_com3.readline()
+        ser.readline()
+
     while True:
-        # line4 = ser_com4.readline().decode()
-        line3 = ser_com3.readline().decode()
-        # line6 = ser_com6.readline().decode()
+        line = ser.readline().decode()
+
+        # retrieve now time
         timer = time.strftime("%H:%M:%S", time.localtime())
-        if line3:
-            # out_com4.write(timer + "," + line4)
-            out_com3.write(timer + "," + line3)
-            # out_com6.write(timer + "," + line6)
-            sys.stdout.write(timer + "," + line3)
 
-            # sys.stdout.write("COM4 >> " + timer + "," + line4 + "COM5 >> " + line5 + "COM6 >> " + line6)
+        # "line" has contents.
+        if line:
+            fp_out.write(timer + "," + line)
 
-        # print ser.read(1000)
+            # print at the terminal to debug
+            sys.stdout.write(timer + "," + line)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) <= 2:
+        exit()
+    main(sys.argv[1:])
