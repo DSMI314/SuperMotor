@@ -4,6 +4,15 @@ import time
 
 
 def main(argv):
+    """
+    After charging, then record sensor data sequentially.
+
+    :param argv:
+    argv[0]: output_file_name
+    argv[1]: connect_port_name
+
+    :return:
+    """
     _FILENAME = argv[0]
     _PORT_NAME = argv[1]
 
@@ -32,6 +41,12 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) <= 2:
-        exit()
+    if len(sys.argv) == 2:
+        print('Error: Only accept exactly 2 parameters.')
+        print()
+        print(':param argv:')
+        print('argv[0]: output_file_name')
+        print('argv[1]: connect_port_name')
+        print()
+        exit(2)
     main(sys.argv[1:])

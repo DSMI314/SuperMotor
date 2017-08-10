@@ -10,12 +10,15 @@ def real_time_process(argv):
     When the model has built, then load data real-time to predict the state at the moment.
 
     :param argv:
-    argv[0]: port_name
-    argv[1]: K-envelope's K, 5 is the best.
-    :return: void
+    argv[0]: client ID
+    argv[1]: connect_port_name
+    argv[2]: K-envelope's K, 5 is the best.
+
+    :return:
     """
-    _PORT_NAME = argv[0]
-    _K = int(argv[1])
+    _BT_NAME = argv[0]
+    _PORT_NAME = argv[1]
+    _K = int(argv[2])
 
     # access file to read model features.
     fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
@@ -48,26 +51,36 @@ def real_time_process(argv):
                 peak_ave = Parser.find_peaks_sorted(real_data)
                 valley_ave = Parser.find_valley_sorted(real_data)
                 gap = np.mean(peak_ave) - np.mean(valley_ave)
-                print(real_data)
 
+                state = 0
                 # is "gap" in K-envelope?
-                print("OK" if gap < mu - _K * std or gap > mu + _K * std else "warning !!!")
+                if gap < mu - _K * std or gap > mu + _K * std:
+                    state = 1
+                print("OK" if state == 0 else "warning !!!")
+
+                # put result into the target file
+                fp = open(PresentationModel.TARGET_FILE, 'w')
+                fp.write(_BT_NAME + '\n' + str(state))
+                fp.close()
 
         except KeyboardInterrupt:
-            print('exiting')
+            print('>> exiting !')
             break
-        finally:
-            # reset the target file
-            fp = open(PresentationModel.TARGET_FILE, 'w')
-            fp.write('-1')
-            fp.close()
+        except IOError:
+            continue
 
 
 def main(argv):
-    if len(argv) == 2:
+    if len(argv) == 3:
         real_time_process(argv)
     else:
-        print('Error: Only accept exactly 2 parameters.')
+        print('Error: Only accept exactly 3 parameters.')
+        print()
+        print(':param argv:')
+        print('argv[0]: client ID')
+        print('argv[1]: connect_port_name')
+        print('argv[2]: K-envelope\'s K, 5 is the best.')
+        print()
         sys.exit(2)
 
 
