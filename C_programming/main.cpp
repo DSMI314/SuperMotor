@@ -19,22 +19,27 @@ using namespace std;
 
 
 int main() {
-
+	// the states of memory and clock before constructing model
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)); 
 	auto before_memory_used = pmc.PeakWorkingSetSize;
 	double before_time = clock();
 
-
+	// construct a model
 	Model model = Model("E:\\Python\\SuperMotor\\recorded_original_data\\motor_0808_1_fan1.csv");
-	model.Run3(60);
+	model.Run(60);
 
+	// the states of memory and clock after constructing model
 	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)); 
 	auto after_memory_used = pmc.PeakWorkingSetSize;
 	double after_time = clock();
 
+	// calculate the cost when running model
 	auto memory_used = after_memory_used - before_memory_used;
 	double time_used = after_time - before_time;
 
-	cout << "time usage:" << time_used / CLOCKS_PER_SEC << " seconds" << endl; //unit in bytes
-	cout << "memory usage:" << memory_used / DIV << " KB" << endl; //unit in bytes
+	//unit in bytes
+	cout << "time usage:" << time_used / CLOCKS_PER_SEC << " seconds" << endl; 
+
+	//unit in bytes
+	cout << "memory usage:" << memory_used / DIV << " KB" << endl; 
 }

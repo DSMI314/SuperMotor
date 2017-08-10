@@ -200,7 +200,8 @@ class Parser(object):
             # valley detected
             if now < prevv and now < nextt:
                 valleys.append(now)
-
+        if len(valleys) == 0:
+            valleys.append(0)
         valleys.sort()
         valleys = valleys[:int(pagesize * ratio / 100)]
         return valleys
@@ -218,7 +219,8 @@ class Parser(object):
             if now > prevv and now > nextt:
                 # stored absolute value
                 peaks.append(now)
-
+        if len(peaks) == 0:
+            peaks.append(0)
         peaks.sort()
         peaks.reverse()
         peaks = peaks[:int(pagesize * ratio / 100)]

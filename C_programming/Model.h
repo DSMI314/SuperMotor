@@ -10,7 +10,6 @@ using namespace std;
 
 class Model {
 	const static int TOP_PEAK_PERCENT = 10;
-	const static int MEAN_GAP_DIM = 3;
 	const static int PAGE_SIZE = 100;
 	const static int SAMPLE_RATE = 20;
 	const char* TRAINING_MODEL_FILE = "motorcycle.txt";
@@ -18,8 +17,8 @@ class Model {
 public:
 	Model(const char* filename);
 	double FindGaps(vector <double> peaks, vector <double> valleys);
-	void Run3(int time_interval);
-	void WriteToFile3(int index, double mean, double std);
+	void Run(int time_interval);
+	void WriteToFile(int index, double mean, double std);
 
 protected:
 	double GetMean(vector <double> xs);

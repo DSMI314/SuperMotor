@@ -3,316 +3,86 @@ import sys
 import numpy as np
 
 from lib import Parser, PresentationModel, AnalogData
-from collections import defaultdict
-import operator
-import math
 
 
-def real_time_process():
-    # open feature data AND parse them
-    p_model = PresentationModel(PresentationModel.TRAINING_MODEL_FILE)
-
-    # plot parameters
-    analog_data = AnalogData(Parser.PAGESIZE)
-    print('>> Start to receive data...')
-
-    # open serial port
-    ser = serial.Serial("COM5", 9600)
-    for _ in range(20):
-        ser.readline()
-
-    while True:
-        try:
-            line = ser.readline()
-
-            data = [float(val) for val in line.decode().split(',')]
-            if len(data) == 3:
-                analog_data.add(data)
-                data_list = analog_data.merge_to_list()
-
-                a = []
-                for k in range(len(data_list[0])):
-                    a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
-
-                real_data = Parser.parse(a)
-                gap = np.mean(Parser.find_gaps(real_data))
-
-                prediction = p_model.predict()
-
-                p_model.add_to_pool(prediction)
-
-                print(p_model._mean_buffer)
-                print('%f => res:%d' % (p_model._now_mean, prediction))
-
-                fp = open(PresentationModel.TARGET_FILE, 'w')
-                fp.write(str(p_model.take_result()))
-                fp.close()
-
-        except KeyboardInterrupt:
-            print('exiting')
-            break
-        finally:
-            # close serial
-            ser.flush()
-            ser.close()
-
-            # reset file
-            fp = open(PresentationModel.TARGET_FILE, 'w')
-            fp.write('-1')
-            fp.close()
-
-
-def real_time_process3():
+def real_time_process(argv):
     """
-    !!!! !!!!
+    When the model has built, then load data real-time to predict the state at the moment.
+
+    :param argv:
+    argv[0]: client ID
+    argv[1]: connect_port_name
+    argv[2]: K-envelope's K, 5 is the best.
+
     :return:
     """
+    _BT_NAME = argv[0]
+    _PORT_NAME = argv[1]
+    _K = int(argv[2])
+
+    # access file to read model features.
     fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
     axis_select = int(fpp.readline())
-    means = []
-    for token in fpp.readline().split(','):
-        means.append(float(token))
-
-    components = []
-    for token in fpp.readline()[1:-2].split(' '):
-        if len(token) > 0:
-            components.append(float(token))
     mu = float(fpp.readline())
     std = float(fpp.readline())
-
-    # plot parameters
-    analog_data = AnalogData(Parser.PAGESIZE)
-    print('>> Start to receive data...')
-
-    # open serial port
-    ser = serial.Serial("COM1", 9600)
-    for _ in range(20):
-        ser.readline()
-
-    while True:
-        try:
-            line = ser.readline()
-
-            data = [float(val) for val in line.decode().split(',')]
-            if len(data) == 3:
-                analog_data.add(data)
-                data_list = analog_data.merge_to_list()
-                print(data_list)
-                a = []
-                real_data = Parser.slice(data_list, axis_select)
-                # print(real_data)
-                gap = np.mean(Parser.find_gaps(real_data))
-
-                if gap < mu - 5 * std or gap > mu + 5 * std:
-                    print("warning!!!")
-
-        except KeyboardInterrupt:
-            print('exiting')
-            break
-        finally:
-            # close serial
-            ser.flush()
-            ser.close()
-
-            # reset file
-            fp = open(PresentationModel.TARGET_FILE, 'w')
-            fp.write('-1')
-            fp.close()
-
-
-def real_time_process4():
-    """
-    !!!! !!!!
-    :return:
-    """
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    axis_select = int(fpp.readline())
-
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
-
     fpp.close()
+
     # plot parameters
     analog_data = AnalogData(Parser.PAGESIZE)
     print('>> Start to receive data...')
 
     # open serial port
-    ser = serial.Serial("COM3", 9600)
+    ser = serial.Serial(_PORT_NAME, 9600)
     for _ in range(20):
         ser.readline()
 
     while True:
         try:
+            # retrieve the line
             line = ser.readline().decode()
-            # print(line)
             data = [float(val) for val in line.split(',')]
+
+            # no missing column in the data
             if len(data) == 3:
+                # calculate mean gap
                 analog_data.add(data)
                 data_list = analog_data.merge_to_list()
-                # print(data_list)
-                # a = []
                 real_data = data_list[axis_select]
                 peak_ave = Parser.find_peaks_sorted(real_data)
                 valley_ave = Parser.find_valley_sorted(real_data)
                 gap = np.mean(peak_ave) - np.mean(valley_ave)
-                print(real_data)
-                # print(gap)
-                if gap < mu - 5 * std or gap > mu + 5 * std:
-                    print("warning!!!")
-                print('run')
+
+                state = 0
+                # is "gap" in K-envelope?
+                if gap < mu - _K * std or gap > mu + _K * std:
+                    state = 1
+                print("OK" if state == 0 else "warning !!!")
+
+                # put result into the target file
+                fp = open(PresentationModel.TARGET_FILE, 'w')
+                fp.write(_BT_NAME + '\n' + str(state))
+                fp.close()
 
         except KeyboardInterrupt:
-            print('exiting')
+            print('>> exiting !')
             break
-        finally:
-            # close serial
-            #
-            # reset file
-            fp = open(PresentationModel.TARGET_FILE, 'w')
-            fp.write('-1')
-            fp.close()
-
-
-def file_process(fp):
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    means = []
-    for token in fpp.readline().split(','):
-        means.append(float(token))
-
-    components = []
-    for token in fpp.readline()[1:-2].split(' '):
-        if len(token) > 0:
-            components.append(float(token))
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
-    print(components)
-    analog_data = AnalogData(Parser.PAGESIZE)
-
-    print('>> Start to receive data from FILE...')
-
-    hit_count = defaultdict(int)
-    tot = 0
-    for file_line in fp:
-        line = file_line.split(',')
-        data = [float(val) for val in line[1:]]
-
-        if len(data) != 3:
+        except IOError:
             continue
-        analog_data.add(data)
-        data_list = analog_data.merge_to_list()
-
-        a = []
-        for k in range(len(data_list[0])):
-            a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
-
-        real_data = Parser.parse(a, means, components)
-        print(real_data)
-        gap = np.mean(Parser.find_gaps(real_data))
-        multiplier = (gap - mu) / (std * 2)
-        plot = int(math.floor(multiplier))
-        hit_count[plot] += 1
-        tot += 1
-        # print(multiplier)
-    ratios = []
-    for w in sorted(hit_count, key=hit_count.get, reverse=True):
-        ratios.append((w, round(hit_count[w] / tot * 100, 2)))
-    print(ratios)
-
-
-def file_process2(fp):
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    means = []
-    for token in fpp.readline().split(','):
-        means.append(float(token))
-
-    components = []
-    for token in fpp.readline()[1:-2].split(' '):
-        if len(token) > 0:
-            components.append(float(token))
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
-    print(components)
-    analog_data = AnalogData(Parser.PAGESIZE)
-
-    print('>> Start to receive data from FILE...')
-
-    line_number = 0
-    for file_line in fp:
-        line_number += 1
-        line = file_line.split(',')
-        data = [float(val) for val in line[1:]]
-
-        if len(data) != 3:
-            continue
-        analog_data.add(data)
-        data_list = analog_data.merge_to_list()
-
-        a = []
-        for k in range(len(data_list[0])):
-            a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
-
-        real_data = Parser.parse(a, means, components)
-
-        gap = np.mean(Parser.find_gaps(real_data))
-
-        if line_number > Parser.PAGESIZE and gap < mu - 5 * std or gap > mu + 5 * std:
-            print(">> %d row WARNING!!! %f" % (line_number, gap))
-
-
-def file_process3(fp):
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    axis_select = int(fpp.readline())
-    means = []
-    for token in fpp.readline().split(','):
-        means.append(float(token))
-
-    components = []
-    for token in fpp.readline()[1:-2].split(' '):
-        if len(token) > 0:
-            components.append(float(token))
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
-    analog_data = AnalogData(Parser.PAGESIZE)
-    print(mu, std)
-    print('>> Start to receive data from FILE...')
-    line_number = 0
-    for file_line in fp:
-        line_number += 1
-        line = file_line.split(',')
-        data = [float(val) for val in line[1:]]
-
-        if len(data) != 3:
-            continue
-        analog_data.add(data)
-        data_list = analog_data.merge_to_list()
-        a = []
-        for k in range(len(data_list[0])):
-            a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
-
-        # real_data, _, _ = Parser.slice(a, axis_select)
-        real_data = Parser.parse(a)
-        gap = np.mean(Parser.find_gaps(real_data))
-
-        if line_number > Parser.PAGESIZE and gap < mu - 5 * std or gap > mu + 5 * std:
-            print(">> %d row WARNING!!! %f" % (line_number, gap))
 
 
 def main(argv):
-    if len(argv) == 0:
-        # real_time_process()
-        # real_time_process3()
-        real_time_process4()
-    elif len(argv) == 1:
-        fp = open(argv[0], 'r')
-        # file_process(fp)
-        file_process2(fp)
-        # file_process3(fp)
-        fp.close()
+    if len(argv) == 3:
+        real_time_process(argv)
     else:
-        print('Error: Only accept at most 1 parameter.')
+        print('Error: Only accept exactly 3 parameters.')
+        print()
+        print(':param argv:')
+        print('argv[0]: client ID')
+        print('argv[1]: connect_port_name')
+        print('argv[2]: K-envelope\'s K, 5 is the best.')
+        print()
         sys.exit(2)
 
 
 if __name__ == '__main__':
-    real_time_process4()
-    # main(sys.argv[1:])
+    main(sys.argv[1:])

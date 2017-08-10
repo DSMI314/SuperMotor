@@ -8,12 +8,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using System.Globalization;
 
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
         private int prevMode = -1;
+        private string prevName = "Unknown";
         public Form1()
         {
             InitializeComponent();
@@ -21,7 +23,7 @@ namespace WindowsFormsApp1
 
             // Call this procedure when the application starts.
             // Set to 1 second.
-            timer1.Interval = 100;
+            timer1.Interval = 200;
 
             // Enable timer.
             timer1.Enabled = true;
@@ -31,102 +33,49 @@ namespace WindowsFormsApp1
         
         private void Form1_Load(object sender, EventArgs e)
         {
-            buttonMode0.BackColor = Color.Gray;
-            buttonMode1.BackColor = Color.Gray;
-            buttonMode2.BackColor = Color.Gray;
-            buttonMode3.BackColor = Color.Gray;
-            ChangeLight(-1);
+            ChangeLight("Unknown", -1);
         }
 
-        private void ChangeLight(int status)
+        private void ChangeLight(string bt_name, int status)
         {
+            _BT01Label.Text = bt_name;
             switch (status)
             {
                 case -1:
-                    lightPictureBox.Image = Properties.Resources.redLight;
-                    warningLabel.ForeColor = Color.Red;
-                    warningLabel.Text = "Closed";
+                    _BTlight01PictureBox.Image = Properties.Resources.redLight;
                     break;
                 case 0:
-                    lightPictureBox.Image = Properties.Resources.yellowLight;
-                    warningLabel.ForeColor = Color.Yellow;
-                    warningLabel.Text = "Alert";
+                    _BTlight01PictureBox.Image = Properties.Resources.greenLight;
                     break;
                 case 1:
-                    lightPictureBox.Image = Properties.Resources.greenLight;
-                    warningLabel.ForeColor = Color.Green;
-                    warningLabel.Text = "Stable";
+                    _BTlight01PictureBox.Image = Properties.Resources.yellowLight;
                     break;
             }
         }
         private void timer1_Tick(object sender, EventArgs e)
         {
             int prediction = prevMode;
+            string bt_name = prevName;
             try
             {
-                StreamReader sr = new StreamReader(@"prediction.txt");
+                StreamReader sr = new StreamReader(@"E:\\python\\Supermotor\\prediction.txt");
                 while (!sr.EndOfStream)
                 {
+                    bt_name = sr.ReadLine();
+
                     string line = sr.ReadLine();
                     prediction = Convert.ToInt32(line);
                     break;
                 }
                 sr.Close();
             }
+            
             catch (IOException)
             {
                 
             }
-            if(prediction >= 0 && prediction <= 3)
-            {
-                if(prediction != prevMode)
-                {
-                    ChangeLight(0);
-                }
-                else
-                {
-                    ChangeLight(1);
-                }
-                prevMode = prediction;
-            }
-            switch (prediction)
-            {
-                case -1:
-                    buttonMode0.BackColor = Color.Gray;
-                    buttonMode1.BackColor = Color.Gray;
-                    buttonMode2.BackColor = Color.Gray;
-                    buttonMode3.BackColor = Color.Gray;
-                    break;
-                case 0:
-                    buttonMode0.BackColor = Color.Tomato;
-                    buttonMode1.BackColor = Color.Gray;
-                    buttonMode2.BackColor = Color.Gray;
-                    buttonMode3.BackColor = Color.Gray;
-                    break;
-                case 1:
-                    buttonMode0.BackColor = Color.Gray;
-                    buttonMode1.BackColor = Color.Tomato;
-                    buttonMode2.BackColor = Color.Gray;
-                    buttonMode3.BackColor = Color.Gray;
-                    break;
-                case 2:
-                    buttonMode0.BackColor = Color.Gray;
-                    buttonMode1.BackColor = Color.Gray;
-                    buttonMode2.BackColor = Color.Tomato;
-                    buttonMode3.BackColor = Color.Gray;
-                    break;
-                case 3:
-                    buttonMode0.BackColor = Color.Gray;
-                    buttonMode1.BackColor = Color.Gray;
-                    buttonMode2.BackColor = Color.Gray;
-                    buttonMode3.BackColor = Color.Tomato;
-                    break;
-            }
-        }
 
-        private void warningLabel_Click(object sender, EventArgs e)
-        {
-
+            ChangeLight(prevName = bt_name, prevMode = prediction);
         }
     }
 }
