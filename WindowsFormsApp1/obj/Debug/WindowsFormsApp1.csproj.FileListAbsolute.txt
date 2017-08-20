@@ -16,3 +16,12 @@ D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Properties.Reso
 D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.GenerateResource.Cache
 D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
 D:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb
+E:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe.config
+E:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.exe
+E:\Python\SuperMotor\WindowsFormsApp1\bin\Debug\WindowsFormsApp1.pdb
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csprojResolveAssemblyReference.cache
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Form1.resources
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.Properties.Resources.resources
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.csproj.GenerateResource.Cache
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.exe
+E:\Python\SuperMotor\WindowsFormsApp1\obj\Debug\WindowsFormsApp1.pdb

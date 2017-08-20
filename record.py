@@ -3,22 +3,50 @@ import sys
 import time
 
 
-if len(sys.argv) > 1:
-    FILENAME = sys.argv[1]
-    out = open(FILENAME, 'w')
-else:
-    exit()
+def main(argv):
+    """
+    After charging, then record sensor data sequentially.
 
-    
-if __name__ == '__main__':
-    ser=serial.Serial("COM5" , 9600 )
-    #first raw data may got some problemm, drop it
+    :param argv:
+    argv[0]: output_file_name
+    argv[1]: connect_port_name
+
+    :return:
+    """
+    _FILENAME = argv[0]
+    _PORT_NAME = argv[1]
+
+    # write data into this file.
+    fp_out = open(_FILENAME + ".csv", 'w')
+
+    # open the port which we entered.
+    ser = serial.Serial(_PORT_NAME, 9600)
+
+    # first some raw data may got some problem, drop it.
     for _ in range(20):
         ser.readline()
+
     while True:
         line = ser.readline().decode()
+
+        # retrieve now time
         timer = time.strftime("%H:%M:%S", time.localtime())
+
+        # "line" has contents.
         if line:
-            out.write(timer + "," + line)
+            fp_out.write(timer + "," + line)
+
+            # print at the terminal to debug
             sys.stdout.write(timer + "," + line)
-        #print ser.read(1000)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        print('Error: Only accept exactly 2 parameters.')
+        print()
+        print(':param argv:')
+        print('argv[0]: output_file_name')
+        print('argv[1]: connect_port_name')
+        print()
+        exit(2)
+    main(sys.argv[1:])

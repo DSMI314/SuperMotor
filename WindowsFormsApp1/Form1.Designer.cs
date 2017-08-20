@@ -31,22 +31,20 @@
             this.components = new System.ComponentModel.Container();
             this._titleLabel = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.buttonMode1 = new System.Windows.Forms.Button();
-            this.buttonMode2 = new System.Windows.Forms.Button();
-            this.buttonMode3 = new System.Windows.Forms.Button();
-            this.buttonMode0 = new System.Windows.Forms.Button();
-            this.warningLabel = new System.Windows.Forms.Label();
-            this.lightPictureBox = new System.Windows.Forms.PictureBox();
-            ((System.ComponentModel.ISupportInitialize)(this.lightPictureBox)).BeginInit();
+            this._BTlight01PictureBox = new System.Windows.Forms.PictureBox();
+            this._BT01Label = new System.Windows.Forms.Label();
+            this.panel1 = new System.Windows.Forms.Panel();
+            ((System.ComponentModel.ISupportInitialize)(this._BTlight01PictureBox)).BeginInit();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // _titleLabel
             // 
             this._titleLabel.AutoSize = true;
-            this._titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F);
-            this._titleLabel.Location = new System.Drawing.Point(140, 72);
+            this._titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 60F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
+            this._titleLabel.Location = new System.Drawing.Point(58, 61);
             this._titleLabel.Name = "_titleLabel";
-            this._titleLabel.Size = new System.Drawing.Size(255, 76);
+            this._titleLabel.Size = new System.Drawing.Size(305, 91);
             this._titleLabel.TabIndex = 0;
             this._titleLabel.Text = "Current";
             // 
@@ -54,94 +52,47 @@
             // 
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
-            // buttonMode1
+            // _BTlight01PictureBox
             // 
-            this.buttonMode1.BackColor = System.Drawing.SystemColors.Control;
-            this.buttonMode1.Enabled = false;
-            this.buttonMode1.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
-            this.buttonMode1.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.buttonMode1.Location = new System.Drawing.Point(305, 279);
-            this.buttonMode1.Name = "buttonMode1";
-            this.buttonMode1.Size = new System.Drawing.Size(150, 200);
-            this.buttonMode1.TabIndex = 3;
-            this.buttonMode1.Text = "Mode 1";
-            this.buttonMode1.UseVisualStyleBackColor = false;
+            this._BTlight01PictureBox.Location = new System.Drawing.Point(3, 4);
+            this._BTlight01PictureBox.Name = "_BTlight01PictureBox";
+            this._BTlight01PictureBox.Size = new System.Drawing.Size(80, 80);
+            this._BTlight01PictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this._BTlight01PictureBox.TabIndex = 8;
+            this._BTlight01PictureBox.TabStop = false;
             // 
-            // buttonMode2
+            // _BT01Label
             // 
-            this.buttonMode2.BackColor = System.Drawing.SystemColors.Control;
-            this.buttonMode2.Enabled = false;
-            this.buttonMode2.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
-            this.buttonMode2.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.buttonMode2.Location = new System.Drawing.Point(538, 279);
-            this.buttonMode2.Name = "buttonMode2";
-            this.buttonMode2.Size = new System.Drawing.Size(150, 200);
-            this.buttonMode2.TabIndex = 4;
-            this.buttonMode2.Text = "Mode 2";
-            this.buttonMode2.UseVisualStyleBackColor = false;
+            this._BT01Label.AutoSize = true;
+            this._BT01Label.Font = new System.Drawing.Font("Microsoft Sans Serif", 30F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
+            this._BT01Label.Location = new System.Drawing.Point(89, 24);
+            this._BT01Label.Name = "_BT01Label";
+            this._BT01Label.Size = new System.Drawing.Size(188, 46);
+            this._BT01Label.TabIndex = 9;
+            this._BT01Label.Text = "BT Name";
             // 
-            // buttonMode3
+            // panel1
             // 
-            this.buttonMode3.BackColor = System.Drawing.SystemColors.Control;
-            this.buttonMode3.Enabled = false;
-            this.buttonMode3.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
-            this.buttonMode3.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.buttonMode3.Location = new System.Drawing.Point(773, 279);
-            this.buttonMode3.Name = "buttonMode3";
-            this.buttonMode3.Size = new System.Drawing.Size(150, 200);
-            this.buttonMode3.TabIndex = 5;
-            this.buttonMode3.Text = "Mode 3";
-            this.buttonMode3.UseVisualStyleBackColor = false;
-            // 
-            // buttonMode0
-            // 
-            this.buttonMode0.BackColor = System.Drawing.SystemColors.Control;
-            this.buttonMode0.Enabled = false;
-            this.buttonMode0.Font = new System.Drawing.Font("Microsoft Sans Serif", 25F);
-            this.buttonMode0.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.buttonMode0.Location = new System.Drawing.Point(73, 279);
-            this.buttonMode0.Name = "buttonMode0";
-            this.buttonMode0.Size = new System.Drawing.Size(150, 200);
-            this.buttonMode0.TabIndex = 6;
-            this.buttonMode0.Text = "Mode 0";
-            this.buttonMode0.UseVisualStyleBackColor = false;
-            // 
-            // warningLabel
-            // 
-            this.warningLabel.AutoSize = true;
-            this.warningLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 40F);
-            this.warningLabel.ForeColor = System.Drawing.Color.Red;
-            this.warningLabel.Location = new System.Drawing.Point(644, 85);
-            this.warningLabel.Name = "warningLabel";
-            this.warningLabel.Size = new System.Drawing.Size(350, 63);
-            this.warningLabel.TabIndex = 7;
-            this.warningLabel.Text = "warningLabel";
-            // 
-            // lightPictureBox
-            // 
-            this.lightPictureBox.Location = new System.Drawing.Point(538, 72);
-            this.lightPictureBox.Name = "lightPictureBox";
-            this.lightPictureBox.Size = new System.Drawing.Size(100, 100);
-            this.lightPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.lightPictureBox.TabIndex = 8;
-            this.lightPictureBox.TabStop = false;
+            this.panel1.Controls.Add(this._BTlight01PictureBox);
+            this.panel1.Controls.Add(this._BT01Label);
+            this.panel1.Location = new System.Drawing.Point(41, 182);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(332, 89);
+            this.panel1.TabIndex = 10;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(984, 561);
-            this.Controls.Add(this.lightPictureBox);
-            this.Controls.Add(this.warningLabel);
-            this.Controls.Add(this.buttonMode0);
-            this.Controls.Add(this.buttonMode3);
-            this.Controls.Add(this.buttonMode2);
-            this.Controls.Add(this.buttonMode1);
+            this.ClientSize = new System.Drawing.Size(425, 311);
+            this.Controls.Add(this.panel1);
             this.Controls.Add(this._titleLabel);
             this.Name = "Form1";
-            this.Text = "Sensor Project Demo";
+            this.Text = "Sensor BT Demo";
             this.Load += new System.EventHandler(this.Form1_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.lightPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._BTlight01PictureBox)).EndInit();
+            this.panel1.ResumeLayout(false);
+            this.panel1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -151,12 +102,9 @@
 
         private System.Windows.Forms.Label _titleLabel;
         private System.Windows.Forms.Timer timer1;
-        private System.Windows.Forms.Button buttonMode1;
-        private System.Windows.Forms.Button buttonMode2;
-        private System.Windows.Forms.Button buttonMode3;
-        private System.Windows.Forms.Button buttonMode0;
-        private System.Windows.Forms.Label warningLabel;
-        private System.Windows.Forms.PictureBox lightPictureBox;
+        private System.Windows.Forms.PictureBox _BTlight01PictureBox;
+        private System.Windows.Forms.Label _BT01Label;
+        private System.Windows.Forms.Panel panel1;
     }
 }
 

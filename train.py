@@ -1,170 +1,48 @@
 import sys
-from lib import *
+from lib import Model
 
-CELL_COUNT = 5
-
-
-def MyConcat(list1, list2):
-    result = []
-    for x in list1:
-        result.append(x)
-    for y in list2:
-        result.append(y)
-    return result
+from memory_profiler import profile
+import timeit
 
 
-def validate(rawData, offset):
-    # preprocess
-    trainDataList = []
-    testDataList = []
-    trainData = []
-    testData = []
-
-    # read file
-    for i in range(MODE):
-        cell_size = int(len(rawData[i]) / CELL_COUNT)
-        ##
-        trainData.append(MyConcat(rawData[i][:cell_size * offset], rawData[i][cell_size * (offset + 1):]))
-        testData.append(rawData[i][cell_size * offset: cell_size * (offset + 1)])
-        ##
-        trainDataList.append(SlidingWindow(trainData[i]))
-        testDataList.append(SlidingWindow(testData[i]))
-
-    seperators = train(trainDataList)
-
-    """
-    predict
-    """
-
-    score = []
-    for i in range(MODE):
-        # now at mode i
-        print('now at mode %d' % i)
-        result = []
-        res = 0
-        for j in range(len(testDataList[i])):
-            gap = np.mean(FindGaps(testDataList[i][j]))
-            print(gap)
-            pd = Predict(gap, seperators)
-            result.append(pd)
-            if pd == i:
-                res += 1
-        print(result)
-        res /= len(testDataList[i])
-        print('success ratio = %.1f%%\n' % (res * 100))
-        score.append(res)
-    return np.mean(score), seperators
-
-
-def validate2(rawData, offset):
-    # preprocess
-    trainDataList = []
-    testDataList = []
-    trainData = []
-    testData = []
-
-    # read file
-    for i in range(MODE):
-        cell_size = int(len(rawData[i]) / CELL_COUNT)
-        ##
-        trainData.append(MyConcat(rawData[i][:cell_size * offset], rawData[i][cell_size * (offset + 1):]))
-        testData.append(rawData[i][cell_size * offset: cell_size * (offset + 1)])
-        ##
-        trainDataList.append(SlidingWindow(trainData[i]))
-        testDataList.append(SlidingWindow(testData[i]))
-
-    X, Y = train2(trainDataList)
-
-    """
-    predict
-    """
-    clf = SVC(kernel='linear')
-    clf.fit(X, Y)
-    score = []
-    for i in range(MODE):
-        # now at mode i
-        print('now at mode %d' % i)
-        result = []
-        res = 0
-        for j in range(len(testDataList[i])):
-            gap = np.mean(FindGaps(testDataList[i][j]))
-            print(gap)
-            pd = Predict2(gap, clf)
-            result.append(pd)
-            if pd == i:
-                res += 1
-        print(result)
-        res /= len(testDataList[i])
-        print('success ratio = %.1f%%\n' % (res * 100))
-        score.append(res)
-    return np.mean(score), X, Y
-
-
-def Run(namePrefix):
-    fileList = []
-    for i in range(MODE):
-        fileList.append(namePrefix + '_' + LABELS[i])
-
-    rawData = []
-    for i in range(MODE):
-        rawData.append(Parse(Read(fileList[i])))
-
-    max_score = 0
-    seperators = None
-    for offset in range(CELL_COUNT):
-        score, sep = validate(rawData, offset)
-        if score > max_score:
-            max_score, seperators = score, sep
-
-    print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-    WriteToFile(seperators)
-
-
-def Run2(namePrefix):
-
-    fileList = []
-    for i in range(MODE):
-        fileList.append(namePrefix + '_' + LABELS[i])
-
-    rawData = []
-    for i in range(MODE):
-        rawData.append(Parse(Read(fileList[i])))
-
-    max_score = 0
-    X, Y = None, None
-    for offset in range(CELL_COUNT):
-        score, x, y = validate2(rawData, offset)
-        if score > max_score:
-            max_score, X, Y = score, x, y
-
-    print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-    WriteToFile2(X, Y)
-
-
-def main(argv):
+@profile
+def main(argv, self_test):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
         sys.exit(2)
     elif len(argv) > 1:
         print('Error: Only accept at most 1 parameter.')
         sys.exit(2)
-              
-    fileName = argv[0]
 
-#    print('>> The machine is training (using GC)...')
-#    Run(fileName)
-#    print('>> Completed the training (using GC)!')
+    filename = argv[0]
+    labels = ['on']
+    print('>> Processing file \"' + filename + '\"...')
 
-    print('>> The machine is training (using SVM)...')
-    Run2(fileName)
-    print('>> Completed the training (using SVM)!')
-    plt.show()
+    if self_test:
+        print('>> The machine is training (using ENVELOPE)...')
+        timer_start = timeit.default_timer()
+
+        model = Model(filename, labels)
+        model.run3(60)
+
+        print('>> Completed the training (using ENVELOPE)!')
+        timer_end = timeit.default_timer()
+    else:
+        print('>> The machine is training (using SVM)...')
+        timer_start = timeit.default_timer()
+
+        model = Model(filename, labels)
+        model.run()
+
+        print('>> Completed the training (using SVM)!')
+        timer_end = timeit.default_timer()
+
+    print('spend ' + str(round(timer_end - timer_start, 2)) + ' seconds')
 
 
 if __name__ == '__main__':
 
- #   testdata = ['0413_2']
- #   for data in testdata:
- #       main([data])
-
-    main(sys.argv[1:])
+    test_data = ['motor_0504_4Y7M_2_HOOK']
+    for data in test_data:
+        main([data], True)
+    # main(sys.argv[1:])
