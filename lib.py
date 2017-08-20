@@ -4,6 +4,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from collections import deque
 import statistics
 import sys
+import pandas as pd
+import seaborn as sns
 
 from sklearn.svm import SVC
 from sklearn import decomposition
@@ -338,6 +340,9 @@ class Model(object):
         mean = statistics.mean(gaps)
         print(mean)
         std = statistics.pstdev(gaps, mean)
+        print(std)
+        Drawer.plot_envelope_prob(mean, std, gaps)
+
         PresentationModel.write_to_file3(now_max_gap_index, self._means, self._components, mean, std)
         print("!!!!!!!!!!! " + str(now_max_gap_index) + " !!!!!!!!!!!!!!!")
 
@@ -544,6 +549,31 @@ class AnalogData(object):
 class Drawer(object):
 
     COLORS = ['blue', 'orange', 'green', 'red']
+
+    @staticmethod
+    def plot_envelope_prob(mean, std, gaps):
+        xs = []
+        ys = []
+        for K in range(0, 50 + 1, 2):
+            K /= 10
+            hit = 0
+            for j in range(len(gaps)):
+                if abs(gaps[j] - mean) <= K * std:
+                    hit += 1
+            hit_ratio = hit / len(gaps)
+            xs.append(K)
+            ys.append(hit_ratio)
+
+        df = pd.DataFrame(data={
+            'K': xs,
+            'hitRatio': ys
+        })
+        print(df)
+        f, ax = plt.subplots(1, 1)
+        ax.set_title('Probability of gaps dropping within range(motor_0504_4Y7M_2_HOOK)')
+        sns.pointplot('K', 'hitRatio', data=df, title='sss')
+        plt.savefig('hitRatio(motor_0504_4Y7M_2_HOOK)240s.png')
+        plt.show()
 
     @staticmethod
     def plot_2d_scatter_origin(raw_data, index, title='', suffix=''):
