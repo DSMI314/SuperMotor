@@ -3,7 +3,8 @@ import sys
 import numpy as np
 
 from lib import Parser, PresentationModel, AnalogData
-
+import seaborn as sns
+import pandas as pd
 
 def real_time_process(argv):
     """
@@ -21,11 +22,7 @@ def real_time_process(argv):
     _K = int(argv[2])
 
     # access file to read model features.
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    axis_select = int(fpp.readline())
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
-    fpp.close()
+    p_model = PresentationModel(PresentationModel.TRAINING_MODEL_FILE)
 
     # plot parameters
     analog_data = AnalogData(Parser.PAGESIZE)
@@ -47,15 +44,13 @@ def real_time_process(argv):
                 # calculate mean gap
                 analog_data.add(data)
                 data_list = analog_data.merge_to_list()
-                real_data = data_list[axis_select]
+                real_data = p_model.pca_combine(data_list)
                 peak_ave = Parser.find_peaks_sorted(real_data)
                 valley_ave = Parser.find_valley_sorted(real_data)
                 gap = np.mean(peak_ave) - np.mean(valley_ave)
 
-                state = 0
                 # is "gap" in K-envelope?
-                if gap < mu - _K * std or gap > mu + _K * std:
-                    state = 1
+                state = p_model.predict(gap, _K)
                 print("OK" if state == 0 else "warning !!!")
 
                 # put result into the target file
@@ -70,25 +65,23 @@ def real_time_process(argv):
             continue
 
 
-def file_process3(fp):
-    fpp = open(PresentationModel.TRAINING_MODEL_FILE, 'r')
-    axis_select = int(fpp.readline())
-    means = []
-    for token in fpp.readline().split(','):
-        means.append(float(token))
+def file_process(argv):
+    # access file to read model features.
+    p_model = PresentationModel(PresentationModel.TRAINING_MODEL_FILE)
 
-    components = []
-    for token in fpp.readline()[1:-2].split(' '):
-        if len(token) > 0:
-            components.append(float(token))
-    mu = float(fpp.readline())
-    std = float(fpp.readline())
     analog_data = AnalogData(Parser.PAGESIZE)
-    print(mu, std)
-    print('>> Start to receive data from FILE...')
-    line_number = 0
 
-    for K in range(1, 5 + 1, 1):
+    print('>> Start to receive data from FILE...')
+
+    CONTINOUS_ANOMALY = 40
+    count = 0
+    xs = []
+    ys = []
+    for K in range(10, 50 + 1, 2):
+        fp = open(argv[0], 'r')
+        detected = 0
+        K /= 10.0
+        line_number = 0
         for file_line in fp:
             line_number += 1
             line = file_line.split(',')
@@ -98,24 +91,31 @@ def file_process3(fp):
                 continue
             analog_data.add(data)
             data_list = analog_data.merge_to_list()
-            a = []
-            for k in range(len(data_list[0])):
-                a.append([data_list[0][k], data_list[1][k], data_list[2][k]])
+            real_data = p_model.pca_combine(data_list)
+            peak_ave = Parser.find_peaks_sorted(real_data)
+            valley_ave = Parser.find_valley_sorted(real_data)
+            gap = np.mean(peak_ave) - np.mean(valley_ave)
 
-            real_data, _, _ = Parser.slice(a, axis_select)
-            gap = np.mean(Parser.find_gaps(real_data))
-            if line_number > Parser.PAGESIZE and (gap < mu - K * std or gap > mu + K * std):
-                print(">> K = %d, %d row WARNING!!! %f" % (K, line_number, gap))
-                break
-
-
+            if line_number > Parser.PAGESIZE and p_model.predict(gap, K) != 0:
+                count += 1
+                if count > CONTINOUS_ANOMALY:
+                    print(">> K = %.1f, %d row WARNING!!! %f" % (K, line_number, gap))
+                    xs.append(K)
+                    ys.append(line_number)
+                    break
+            else:
+                count = 0
+    out = pd.DataFrame(data={
+        'K': xs,
+        '60s': ys
+    })
+    out.to_csv('result.csv', index=False)
 
 def main(argv):
     if len(argv) == 3:
         real_time_process(argv)
     elif len(argv) == 1:
-        fp = open(argv[0], 'r')
-        file_process3(fp)
+        file_process(argv)
     else:
         print('Error: Only accept exactly 3 parameters.')
         print()
