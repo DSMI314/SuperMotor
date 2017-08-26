@@ -22,7 +22,7 @@ def main(argv):
     timer_start = timeit.default_timer()
 
     model = Model(filename, labels)
-    model.run(240)
+    model.run(60)
 
     print('>> Completed the training (using ENVELOPE)!')
     timer_end = timeit.default_timer()
@@ -32,7 +32,7 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0504_4Y7M_2_TOP']
+    test_data = ['motor_0504_4Y7M_2_HOOK']
     for data in test_data:
         main([data])
     # main(sys.argv[1:])

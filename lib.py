@@ -120,7 +120,7 @@ class Parser(object):
             records.append(values)
 
         # Discard some beginning data which may be noisy
-        del records[:int(len(records) / 30)]
+        # del records[:int(len(records) / 30)]
         n = len(records)
 
         for i in range(n):

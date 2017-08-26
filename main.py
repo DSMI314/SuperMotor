@@ -5,6 +5,8 @@ import numpy as np
 from lib import Parser, PresentationModel, AnalogData
 import seaborn as sns
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 def real_time_process(argv):
     """
@@ -77,39 +79,58 @@ def file_process(argv):
     count = 0
     xs = []
     ys = []
-    for K in range(10, 50 + 1, 2):
-        fp = open(argv[0], 'r')
-        detected = 0
-        K /= 10.0
-        line_number = 0
-        for file_line in fp:
-            line_number += 1
-            line = file_line.split(',')
-            data = [float(val) for val in line[1:]]
+    fp = open(argv[0], 'r')
+    K = 2
+    line_number = 0
+    for file_line in fp:
+        line_number += 1
+        line = file_line.split(',')
+        data = [float(val) for val in line[1:]]
 
-            if len(data) != 3:
-                continue
-            analog_data.add(data)
-            data_list = analog_data.merge_to_list()
-            real_data = p_model.pca_combine(data_list)
-            peak_ave = Parser.find_peaks_sorted(real_data)
-            valley_ave = Parser.find_valley_sorted(real_data)
-            gap = np.mean(peak_ave) - np.mean(valley_ave)
+        if len(data) != 3:
+            continue
+        analog_data.add(data)
+        data_list = analog_data.merge_to_list()
+        real_data = p_model.pca_combine(data_list)
+        peak_ave = Parser.find_peaks_sorted(real_data)
+        valley_ave = Parser.find_valley_sorted(real_data)
+        gap = np.mean(peak_ave) - np.mean(valley_ave)
+        if line_number >= Parser.PAGESIZE:
+            xs.append(line_number)
+            ys.append(gap)
+            print(gap)
 
-            if line_number > Parser.PAGESIZE and p_model.predict(gap, K) != 0:
-                count += 1
-                if count > CONTINOUS_ANOMALY:
-                    print(">> K = %.1f, %d row WARNING!!! %f" % (K, line_number, gap))
-                    xs.append(K)
-                    ys.append(line_number)
-                    break
-            else:
-                count = 0
+        # if line_number > Parser.PAGESIZE and p_model.predict(gap, K) != 0:
+        #     count += 1
+        #     if count > CONTINOUS_ANOMALY:
+        #         print(">> K = %.1f, %d row WARNING!!! %f" % (K, line_number, gap))
+        #         xs.append(K)
+        #         ys.append(line_number)
+        #         break
+        # else:
+        #     count = 0
     out = pd.DataFrame(data={
-        'K': xs,
-        '60s': ys
+        'motor_0504_4Y7M_2_BODY': ys
     })
-    out.to_csv('result.csv', index=False)
+    out2 = pd.DataFrame(data={
+        'time_stamp': xs,
+        'gap_value': ys
+    })
+    print(out2)
+    f, ax = plt.subplots(1, 1)
+    ax.plot(out2['time_stamp'], out2['gap_value'], color='green', label='motor_0504_4Y7M_4_BODY')
+    ax.legend()
+    plt.xlabel('time_stamp (20/s)')
+    plt.ylabel('gap_value')
+    ax.set_title('The gap curve')
+    plt.show()
+
+    ax = sns.boxplot(data=out, color='orange')
+    ax.set_xlabel('data_source')
+    ax.set_ylabel('gap_value')
+    ax.set_title('The box plot of gap in the time sequence')
+    plt.show()
+
 
 def main(argv):
     if len(argv) == 3:
