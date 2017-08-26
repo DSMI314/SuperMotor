@@ -25,7 +25,8 @@ int main() {
 	double before_time = clock();
 
 	// construct a model
-	Model model = Model("E:\\Python\\SuperMotor\\recorded_original_data\\motor_0808_1_fan1.csv");
+	Model model = Model("E:\\Python\\SuperMotor\\recorded_original_data\\motor_0504_4Y7M_2_HOOK_on.csv");
+	model.Train();
 	model.Run(60);
 
 	// the states of memory and clock after constructing model

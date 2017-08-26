@@ -5,11 +5,12 @@
 #include <functional>
 #include <numeric>
 #include <deque>
+#include <iostream>
 
 using namespace std;
 
 Model::Model(const char* filename) {
-	this->_original_data = Open(filename);
+	Open(filename);
 }
 
 /** @brief: Calculate gaps between peaks and valleys.
@@ -43,11 +44,10 @@ double Model::FindGaps(vector <double> peaks, vector <double> valleys) {
 
   * @return:
   **/
-void Model::WriteToFile(int index, double mean, double std) {
+void Model::WriteToFile(double mean, double std) {
 	FILE* fp = fopen(Model::TRAINING_MODEL_FILE, "w");
-	fprintf(fp, "%d\n", index);
-	fprintf(fp, "%f\n", mean);
-	fprintf(fp, "%f\n", std);
+	fprintf(fp, "%lf\n", mean);
+	fprintf(fp, "%lf\n", std);
 	fclose(fp);
 }
 
@@ -64,66 +64,51 @@ void Model::Run(int time_interval) {
 	int end_pos = min(int(_original_data.size()), time_interval * SAMPLE_RATE);
 
 	// initialize
-	double now_max_gap = 0.0;
-	int now_max_gap_index = -1;
-	vector <double> now_gaps = vector <double>();
+	vector <double> buffer;
+	for (int j = 0; j < end_pos; j++) {
+		double pca = 0.0;
+		for (int k = 0; k < DIM; k++)
+			pca += _original_data[j](k) * _components(k);
+		buffer.emplace_back(pca);
+	}
+	vector <double> valleys;
+	vector <double> peaks;
 
-	// loop for X, Y, Z axes.
-	for (int axis_index = 0; axis_index < 3; axis_index++) {
-		// slice the particular axis data
-		vector <double> buffer;
-		for (int j = 0; j < end_pos; j++)
-			buffer.emplace_back(_original_data[j](axis_index));
+	// generate needed information for the first "PAGE_SIZE" data
+	assert(_original_data.size() > PAGE_SIZE);
+	for (int j = 1; j < PAGE_SIZE - 1; j++) {
+		if (buffer[j] > buffer[j - 1] && buffer[j] > buffer[j + 1])
+			peaks.emplace_back(buffer[j]);
+		if (buffer[j] < buffer[j - 1] && buffer[j] < buffer[j + 1])
+			valleys.emplace_back(buffer[j]);
+	}
+	sort(valleys.begin(), valleys.end());
+	sort(peaks.begin(), peaks.end());
 
-		vector <double> valleys = vector <double>();
-		vector <double> peaks = vector <double>();
+	vector <double> gaps;
+	gaps.emplace_back(FindGaps(peaks, valleys));
 
-		// generate needed information for the first "PAGE_SIZE" data
-		assert(_original_data.size() > PAGE_SIZE);
-		for (int j = 1; j < PAGE_SIZE - 1; j++) {
-			if (buffer[j] > buffer[j - 1] && buffer[j] > buffer[j + 1])
-				peaks.emplace_back(buffer[j]);
-			if (buffer[j] < buffer[j - 1] && buffer[j] < buffer[j + 1])
-				valleys.emplace_back(buffer[j]);
-		}
-		sort(valleys.begin(), valleys.end());
-		sort(peaks.begin(), peaks.end());
+	// simulate the sliding window on "buffer"
+	for (int j = PAGE_SIZE; j < end_pos; j++) {
+		int s = j - PAGE_SIZE + 1;
+		if (buffer[s] > buffer[s - 1] && buffer[s] > buffer[s + 1])
+			peaks.erase(find(peaks.begin(), peaks.end(), buffer[s]));
+		if (buffer[s] < buffer[s - 1] && buffer[s] < buffer[s + 1])
+			valleys.erase(find(valleys.begin(), valleys.end(), buffer[s]));
 
-		vector <double> gaps;
+		int e = j - 1;
+		if (buffer[e] > buffer[e - 1] && buffer[e] > buffer[e + 1])
+			peaks.insert(lower_bound(peaks.begin(), peaks.end(), buffer[e]), buffer[e]);
+		if (buffer[e] < buffer[e - 1] && buffer[e] < buffer[e + 1])
+			valleys.insert(lower_bound(valleys.begin(), valleys.end(), buffer[e]), buffer[e]);
 		gaps.emplace_back(FindGaps(peaks, valleys));
-
-		// simulate the sliding window on "buffer"
-		for (int j = PAGE_SIZE; j < end_pos; j++) {
-			int s = j - PAGE_SIZE + 1;
-			if (buffer[s] > buffer[s - 1] && buffer[s] > buffer[s + 1])
-				peaks.erase(find(peaks.begin(), peaks.end(), buffer[s]));
-			if (buffer[s] < buffer[s - 1] && buffer[s] < buffer[s + 1])
-				valleys.erase(find(valleys.begin(), valleys.end(), buffer[s]));
-
-			int e = j - 1;
-			if (buffer[e] > buffer[e - 1] && buffer[e] > buffer[e + 1])
-				peaks.insert(lower_bound(peaks.begin(), peaks.end(), buffer[e]), buffer[e]);
-			if (buffer[e] < buffer[e - 1] && buffer[e] < buffer[e + 1])
-				valleys.insert(lower_bound(valleys.begin(), valleys.end(), buffer[e]), buffer[e]);
-			gaps.emplace_back(FindGaps(peaks, valleys));
-		}
-
-		// update feature if we get useful one
-		double gap = GetMean(gaps);
-		printf("%lf\n", gap);
-		if (gap > now_max_gap) {
-			now_max_gap = gap;
-			now_max_gap_index = axis_index;
-			now_gaps = gaps;
-		}
 	}
 	// output important features to the file.
-	vector <double> gaps = now_gaps;
 	double mean = GetMean(gaps);
-	printf("!! %lf\n", mean);
+	printf(">> mean = %lf\n", mean);
 	double std = GetStd(gaps);
-	WriteToFile(now_max_gap_index, mean, std);
-	printf("!!!!!!!! %d !!!!!!!!!!!!\n", now_max_gap_index);
+	printf(">> std = %lf\n", std);
+	WriteToFile(mean, std);
 }
 
 /** @brief: Calculate average of a list.
@@ -159,13 +144,12 @@ double Model::GetStd(vector <double> xs) {
 
   * @return: tuple (X,Y,Z) list
   **/
-vector <RowVector3d> Model::Open(const char* filename) {
+void Model::Open(const char* filename) {
 	FILE* fp;
 	errno_t err = fopen_s(&fp, filename, "r");
 	if (err != 0)
-		return vector <RowVector3d>();
+		return;
 
-	vector <RowVector3d> V;
 	char* line = new char[MAX_COUNT];
 	while ((fgets(line, MAX_COUNT, fp)) != 0) {
 		char* token = strtok(line, ",");
@@ -174,7 +158,31 @@ vector <RowVector3d> Model::Open(const char* filename) {
 			token = strtok(NULL, ",");
 			arr[i] = atoi(token);
 		}
-		V.emplace_back(RowVector3d(arr[0], arr[1], arr[2]));
+		_original_data.emplace_back(RowVector3d(arr[0], arr[1], arr[2]));
 	}
-	return V;
+}
+void Model::Train() {
+	int n = (int)_original_data.size();
+
+	Vector3d mean(DIM);
+	mean.setZero();
+
+	for (int i = 0; i < n; i++) for (int j = 0; j < DIM; j++) 
+		mean(j) += _original_data[i](j) / (double) n;
+
+	MatrixXd cov(DIM, DIM);
+	cov.setZero();
+	for (int i = 0; i < DIM; i++) for (int j = 0; j < DIM; j++) for (int k = 0; k < n; k++)
+		cov(i, j) += (_original_data[k](i) - mean(i)) * (_original_data[k](j) - mean(j)) / (double) n;
+
+	EigenSolver<Matrix3d> solver(cov);
+	MatrixXd eigenVectors = solver.eigenvectors().real();
+	VectorXd eigenValues = solver.eigenvalues().real();
+
+	// cout << eigenVectors << endl;
+	// cout << eigenValues << endl;
+
+	sort(eigenValues.derived().data(), eigenValues.derived().data() + eigenValues.derived().size());
+	short index = eigenValues.size() - 1;
+	_components = -eigenVectors.col(0);
 }
