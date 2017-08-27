@@ -61,11 +61,36 @@ void Model::WriteToFile(double mean, double std) {
   **/
 void Model::Run(int time_interval) {
 	// get the end mark
-	int end_pos = min(int(_original_data.size()), time_interval * SAMPLE_RATE);
+	int n = min(int(_original_data.size()), time_interval * SAMPLE_RATE);
+	
+	Vector3d mu(DIM);
+	mu.setZero();
+
+	for (int i = 0; i < n; i++) for (int j = 0; j < DIM; j++)
+		mu(j) += _original_data[i](j) / (double)n;
+
+	MatrixXd cov(DIM, DIM);
+	cov.setZero();
+	for (int i = 0; i < DIM; i++) for (int j = 0; j < DIM; j++) for (int k = 0; k < n; k++)
+		cov(i, j) += (_original_data[k](i) - mu(i)) * (_original_data[k](j) - mu(j)) / (double)n;
+
+	EigenSolver<Matrix3d> solver(cov);
+	MatrixXd eigenVectors = solver.eigenvectors().real();
+	VectorXd eigenValues = solver.eigenvalues().real();
+
+	// cout << eigenVectors << endl;
+	// cout << eigenValues << endl;
+
+	sort(eigenValues.derived().data(), eigenValues.derived().data() + eigenValues.derived().size());
+	short index = eigenValues.size() - 1;
+	_components = -eigenVectors.col(0);
+
+	cout << mu << endl;
+	cout << _components << endl;
 
 	// initialize
 	vector <double> buffer;
-	for (int j = 0; j < end_pos; j++) {
+	for (int j = 0; j < n; j++) {
 		double pca = 0.0;
 		for (int k = 0; k < DIM; k++)
 			pca += _original_data[j](k) * _components(k);
@@ -89,7 +114,7 @@ void Model::Run(int time_interval) {
 	gaps.emplace_back(FindGaps(peaks, valleys));
 
 	// simulate the sliding window on "buffer"
-	for (int j = PAGE_SIZE; j < end_pos; j++) {
+	for (int j = PAGE_SIZE; j < n; j++) {
 		int s = j - PAGE_SIZE + 1;
 		if (buffer[s] > buffer[s - 1] && buffer[s] > buffer[s + 1])
 			peaks.erase(find(peaks.begin(), peaks.end(), buffer[s]));
@@ -101,6 +126,7 @@ void Model::Run(int time_interval) {
 			peaks.insert(lower_bound(peaks.begin(), peaks.end(), buffer[e]), buffer[e]);
 		if (buffer[e] < buffer[e - 1] && buffer[e] < buffer[e + 1])
 			valleys.insert(lower_bound(valleys.begin(), valleys.end(), buffer[e]), buffer[e]);
+
 		gaps.emplace_back(FindGaps(peaks, valleys));
 	}
 	// output important features to the file.
@@ -160,29 +186,4 @@ void Model::Open(const char* filename) {
 		}
 		_original_data.emplace_back(RowVector3d(arr[0], arr[1], arr[2]));
 	}
-}
-void Model::Train() {
-	int n = (int)_original_data.size();
-
-	Vector3d mean(DIM);
-	mean.setZero();
-
-	for (int i = 0; i < n; i++) for (int j = 0; j < DIM; j++) 
-		mean(j) += _original_data[i](j) / (double) n;
-
-	MatrixXd cov(DIM, DIM);
-	cov.setZero();
-	for (int i = 0; i < DIM; i++) for (int j = 0; j < DIM; j++) for (int k = 0; k < n; k++)
-		cov(i, j) += (_original_data[k](i) - mean(i)) * (_original_data[k](j) - mean(j)) / (double) n;
-
-	EigenSolver<Matrix3d> solver(cov);
-	MatrixXd eigenVectors = solver.eigenvectors().real();
-	VectorXd eigenValues = solver.eigenvalues().real();
-
-	// cout << eigenVectors << endl;
-	// cout << eigenValues << endl;
-
-	sort(eigenValues.derived().data(), eigenValues.derived().data() + eigenValues.derived().size());
-	short index = eigenValues.size() - 1;
-	_components = -eigenVectors.col(0);
 }

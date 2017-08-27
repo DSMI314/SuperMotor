@@ -20,7 +20,6 @@ public:
 	double FindGaps(vector <double> peaks, vector <double> valleys);
 	void Run(int time_interval);
 	void WriteToFile(double mean, double std);
-	void Train();
 
 protected:
 	double GetMean(vector <double> xs);

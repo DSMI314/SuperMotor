@@ -202,11 +202,6 @@ class Model(object):
         self._raw_data = []
         self._components = []
         self._means = []
-        for i in range(self._mode):
-            result, mean, comp = Parser.parse(self._original_data[i])
-            self._raw_data.append(result)
-            self._means.append(mean)
-            self._components.append(comp)
 
     def run(self, time_interval):
         """
@@ -217,11 +212,17 @@ class Model(object):
         if self._mode > 1:
             print('Error: Only accept at only 1 file.')
             sys.exit(2)
+
         for i in range(self._mode):
-            self._raw_data[i] = self._raw_data[i][:time_interval * Model._SAMPLE_RATE]
+            raw_data = self._original_data[i][:time_interval * Model._SAMPLE_RATE]
+            result, mean, comp = Parser.parse(raw_data)
+            self._raw_data.append(result)
+            self._means.append(mean)
+            self._components.append(comp)
         gaps = Parser.get_gaps_curve(self._raw_data[0])
         mean = statistics.mean(gaps)
         std = statistics.pstdev(gaps)
+        print(mean, std)
         PresentationModel.write_to_file(self._components, mean, std)
 
 
