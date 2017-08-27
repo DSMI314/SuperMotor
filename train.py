@@ -1,8 +1,11 @@
 import sys
 from lib import Model
-
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 from memory_profiler import profile
 import timeit
+import numpy as np
 
 
 @profile
@@ -21,9 +24,27 @@ def main(argv):
     print('>> The machine is training (using ENVELOPE)...')
     timer_start = timeit.default_timer()
 
-    model = Model(filename, labels)
-    model.run(60)
-
+    df = pd.DataFrame(columns={
+        'recorded_time',
+        'mean',
+        'std'
+    })
+    plt.title('gaps distribution depend on recorded time (HOOK)')
+    plt.xlabel('gap_value')
+    plt.ylabel('percentage (%)')
+    for t in range(60, 240+1, 60):
+        model = Model(filename, labels)
+        mean, std = model.run(t)
+        c = df.shape[0]
+        df.loc[c] = {
+            'recorded_time': int(t/60),
+            'mean': mean,
+            'std': std
+        }
+    plt.legend(['1 min', '2 min', '3 min', '4 min'])
+    plt.savefig('HOOK' + '.png')
+    df = df[['recorded_time', 'mean', 'std']]
+    df.to_csv('HOOK.csv', index=False)
     print('>> Completed the training (using ENVELOPE)!')
     timer_end = timeit.default_timer()
 

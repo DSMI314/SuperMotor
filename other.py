@@ -77,6 +77,15 @@ def main2():
     plt.show()
 
 
+def main3():
+    inn = pd.read_csv('N_mean_std.csv')
+    ott = pd.read_csv('N_ON_gap.csv')
+    res = inn.merge(ott)
+    print(res)
+    g = sns.FacetGrid(res, col="recorded_time", row="observation_time")
+    g = g.map(plt.hist, "gap_value")
+    plt.show()
+
 if __name__ == '__main__':
-    main2()
+    main3()
 

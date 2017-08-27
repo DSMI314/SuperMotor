@@ -41,8 +41,8 @@ class Parser(object):
         :param buffer: n*1 dimension list
         :return: n*1 dimension list
         """
-        records, means, components = Parser.__get_pca(buffer, 1)
-        return records, means, components
+        pca, means, components = Parser.__get_pca(buffer, 1)
+        return pca, means, components
 
     @staticmethod
     def __find_gaps(peaks, valleys):
@@ -92,10 +92,9 @@ class Parser(object):
     def __get_pca(records, n):
         pca = decomposition.PCA(n_components=n)
         pca.fit(records)
-        records = pca.transform(records)
         print('mean = ' + str(pca.mean_))
         print('components = ' + str(pca.components_))
-        return records, pca.mean_, pca.components_
+        return pca, pca.mean_, pca.components_
 
     @staticmethod
     def __load_csv(filename):
@@ -213,17 +212,19 @@ class Model(object):
             print('Error: Only accept at only 1 file.')
             sys.exit(2)
 
-        for i in range(self._mode):
-            raw_data = self._original_data[i][:time_interval * Model._SAMPLE_RATE]
-            result, mean, comp = Parser.parse(raw_data)
-            self._raw_data.append(result)
-            self._means.append(mean)
-            self._components.append(comp)
+        pca, mean, comp = Parser.parse(self._original_data[0][:time_interval * Model._SAMPLE_RATE])
+        self._raw_data.append(pca.transform(self._original_data[0][:time_interval * Model._SAMPLE_RATE]))
+        self._means.append(mean)
+        self._components.append(comp)
+
         gaps = Parser.get_gaps_curve(self._raw_data[0])
         mean = statistics.mean(gaps)
         std = statistics.pstdev(gaps)
         print(mean, std)
+
+        sns.distplot(gaps, bins=20)
         PresentationModel.write_to_file(self._components, mean, std)
+        return mean, std
 
 
 class PresentationModel(object):
