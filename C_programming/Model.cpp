@@ -38,7 +38,6 @@ double Model::FindGaps(vector <double> peaks, vector <double> valleys) {
 
   * Create the file and write down.
 
-  * @param index: the axis which we should consider
   * @param mean: the average of gaps
   * @param std: the stardard deviation of gaps
 
@@ -67,23 +66,21 @@ void Model::Run(int time_interval) {
 	mu.setZero();
 
 	for (int i = 0; i < n; i++) for (int j = 0; j < DIM; j++)
-		mu(j) += _original_data[i](j) / (double)n;
+		mu(j) += _original_data[i](j) / n;
 
 	MatrixXd cov(DIM, DIM);
 	cov.setZero();
 	for (int i = 0; i < DIM; i++) for (int j = 0; j < DIM; j++) for (int k = 0; k < n; k++)
-		cov(i, j) += (_original_data[k](i) - mu(i)) * (_original_data[k](j) - mu(j)) / (double)n;
+		cov(i, j) += (_original_data[k](i) - mu(i)) * (_original_data[k](j) - mu(j)) / n;
 
-	EigenSolver<Matrix3d> solver(cov);
-	MatrixXd eigenVectors = solver.eigenvectors().real();
-	VectorXd eigenValues = solver.eigenvalues().real();
+	// use power method to compute dominant eigenvector
+	Vector3d v(1, 0, 0);
+	for (int i = 0; i < ITERATION; i++) {
+		v = cov * v;
+		v.normalize();
+	}
 
-	// cout << eigenVectors << endl;
-	// cout << eigenValues << endl;
-
-	sort(eigenValues.derived().data(), eigenValues.derived().data() + eigenValues.derived().size());
-	short index = eigenValues.size() - 1;
-	_components = -eigenVectors.col(0);
+	_components = v;
 
 	cout << mu << endl;
 	cout << _components << endl;

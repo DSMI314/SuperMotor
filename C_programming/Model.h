@@ -13,18 +13,19 @@ class Model {
 	const static int PAGE_SIZE = 100;
 	const static int SAMPLE_RATE = 20;
 	const static int DIM = 3;
+	const static int ITERATION = 1000;
 	const char* TRAINING_MODEL_FILE = "motorcycle.txt";
 
 public:
 	Model(const char* filename);
-	double FindGaps(vector <double> peaks, vector <double> valleys);
 	void Run(int time_interval);
-	void WriteToFile(double mean, double std);
 
 protected:
 	double GetMean(vector <double> xs);
 	double GetStd(vector <double> xs);
 	void Open(const char* filename);
+	void WriteToFile(double mean, double std);
+	double FindGaps(vector <double> peaks, vector <double> valleys);
 
 private:
 	vector <RowVector3d> _original_data;
