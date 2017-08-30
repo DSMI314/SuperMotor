@@ -80,16 +80,16 @@ def main2():
 def main3():
     dfl = []
     for t in range(1, 4+1):
-        dfl.append(pd.read_csv('motor_TOP' + str(t) + '_res.csv'))
+        dfl.append(pd.read_csv('motor_BODY' + str(t) + '_res.csv'))
     df = dfl[0].append(dfl[1]).append(dfl[2]).append(dfl[3]).reset_index()
     df = df.drop(['index'], axis=1)
     df.to_csv('sss.csv', index=False)
 
-    g = sns.factorplot(x="K", y="false_positive_ratio", hue="recorded_time", col="delta_t", col_wrap=3, data=df)
-    g.fig.subplots_adjust(top=0.9)
-    g.fig.suptitle('K v.s. false_positive_ratio for choice of K (TOP)', fontsize=16)
-    plt.savefig('tmp.png')
-    plt.show()
+    g = sns.factorplot(x="delta_t", y="false_positive_ratio", hue="recorded_time", col="K", data=df)
+    g.fig.subplots_adjust(top=0.8)
+    g.fig.suptitle('delta_t v.s. false_positive_ratio for choice of K (BODY)', fontsize=16)
+    plt.savefig('BODY_K.png')
+    # plt.show()
     print(df)
 
 
@@ -110,5 +110,5 @@ def main4():
 
 
 if __name__ == '__main__':
-    main4()
+    main3()
 
