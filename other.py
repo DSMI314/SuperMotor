@@ -109,6 +109,26 @@ def main4():
     plt.show()
 
 
+def main5():
+    # dfl = []
+    # for t in range(1, 4 + 1):
+    #     dfl.append(pd.read_csv('motor_HOOK' + str(t) + '_res.csv'))
+    # df = dfl[0].append(dfl[1]).append(dfl[2]).append(dfl[3]).reset_index()
+    # df = df.drop(['index'], axis=1)
+    # df.to_csv('sss.csv', index=False)
+    for pos in ['HOOK', 'TOP', 'BODY']:
+        for t in [1, 2, 3, 4]:
+            df = pd.read_csv('motor_' + pos + str(t) + '_res.csv')
+            mat = df.pivot("K", "delta_t", "false_positive_ratio")
+            ax = plt.axes()
+            g = sns.heatmap(mat, ax=ax, vmin=0, vmax=35)
+            sns.plt.suptitle('The false positive ratio depends on \"K\" and \"delta_t\" (' + pos + ' ' + str(t) + 'min)',
+                             fontsize=14)
+            plt.savefig(pos + '_' + str(t) + 'min_heatmap.png')
+            plt.clf()
+            # plt.show()
+            # print(df)
+
 if __name__ == '__main__':
-    main3()
+    main5()
 
