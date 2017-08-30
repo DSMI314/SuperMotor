@@ -125,7 +125,7 @@ def file_process(argv):
             print(delta_t, rec_time, warning_count / (EVENT - Parser.PAGESIZE) * 100, K)
     df = df[['recorded_time', 'delta_t', 'K', 'false_positive_ratio']]
     print(df)
-    df.to_csv(argv[0][:-4] + str[argv[1]] + '_res.csv', index=False)
+    df.to_csv(argv[0][:-4] + '_res.csv', index=False)
 
 def main(argv):
     if len(argv) == 3:
