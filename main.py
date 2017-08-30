@@ -76,56 +76,47 @@ def file_process(argv):
 
     print('>> Start to receive data from FILE...')
 
-    df = pd.DataFrame(columns={
-        'delta_t',
-        'K',
-        'recorded_time',
-        'false_positive_ratio'
+    # CONTINOUS_ANOMALY = c
+    count = 0
+    fp = open(argv[0], 'r')
+    # K /= 10.0
+    line_number = 0
+    xs = []
+    ys = []
+    time_interval = int(argv[1]) * 60
+    for file_line in fp:
+        line_number += 1
+        if line_number > time_interval * 20:
+            break
+        line = file_line.split(',')
+        data = [float(val) for val in line[1:]]
+
+        if len(data) != 3:
+            continue
+        analog_data.add(data)
+        data_list = analog_data.merge_to_list()
+        real_data = p_model.pca_combine(data_list)
+        peak_ave = Parser.find_peaks_sorted(real_data)
+        valley_ave = Parser.find_valley_sorted(real_data)
+        gap = np.mean(peak_ave) - np.mean(valley_ave)
+
+        if line_number >= Parser.PAGESIZE:
+            xs.append(argv[1])
+            ys.append(gap)
+        # if line_number >= Parser.PAGESIZE and p_model.predict(gap, K) != 0:
+        #     count += 1
+        #     if count >= CONTINOUS_ANOMALY:
+        #         warning_count += 1
+        # else:
+        #     count = 0
+
+    df = pd.DataFrame(data={
+        'recorded_time': xs,
+        'gap_value': ys
     })
-    EVENT = 2485
-    for c in [1, 5, 10, 15, 20, 25, 30, 35, 40]:
-        for K in [10, 15, 20, 25, 30]:
-            CONTINOUS_ANOMALY = c
-            count = 0
-            fp = open(argv[0], 'r')
-            K /= 10.0
-            line_number = 0
-            warning_count = 0
-            for file_line in fp:
-                line_number += 1
-                if line_number > EVENT:
-                    break
-                line = file_line.split(',')
-                data = [float(val) for val in line[1:]]
-
-                if len(data) != 3:
-                    continue
-                analog_data.add(data)
-                data_list = analog_data.merge_to_list()
-                real_data = p_model.pca_combine(data_list)
-                peak_ave = Parser.find_peaks_sorted(real_data)
-                valley_ave = Parser.find_valley_sorted(real_data)
-                gap = np.mean(peak_ave) - np.mean(valley_ave)
-
-                if line_number >= Parser.PAGESIZE and p_model.predict(gap, K) != 0:
-                    count += 1
-                    if count >= CONTINOUS_ANOMALY:
-                        warning_count += 1
-                else:
-                    count = 0
-            delta_t = c / 20
-            rec_time = argv[1]
-            e = df.shape[0]
-            df.loc[e] = {
-                'delta_t': delta_t,
-                'recorded_time': rec_time,
-                'false_positive_ratio': warning_count / (EVENT - Parser.PAGESIZE) * 100,
-                'K': K
-            }
-            print(delta_t, rec_time, warning_count / (EVENT - Parser.PAGESIZE) * 100, K)
-    df = df[['recorded_time', 'delta_t', 'K', 'false_positive_ratio']]
-    print(df)
-    df.to_csv(argv[0][:-4] + str[argv[1]] + '_res.csv', index=False)
+    # sns.distplot(df)
+    # plt.show()
+    df.to_csv('BODY' + str(argv[1]) + '.csv', index=False)
 
 def main(argv):
     if len(argv) == 3:

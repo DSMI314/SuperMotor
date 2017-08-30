@@ -221,6 +221,13 @@ class Model(object):
         print(mean, std)
 
         sns.distplot(gaps, bins=20)
+        df = pd.DataFrame(data={
+            'recorded_time': [str(int(time_interval / 60)) + ' min'] * len(gaps),
+            'gap_value': gaps
+        })
+        # sns.distplot(df)
+        # plt.show()
+        df.to_csv('TOP' + str(int(time_interval / 60)) + '.csv', index=False)
         PresentationModel.write_to_file(self._components, mean, std)
         return mean, std
 
