@@ -86,8 +86,8 @@ def file_process(argv):
     time_interval = int(argv[1]) * 60
     for file_line in fp:
         line_number += 1
-        if line_number > time_interval * 20:
-            break
+        # if line_number > time_interval * 20:
+        #     break
         line = file_line.split(',')
         data = [float(val) for val in line[1:]]
 
@@ -101,7 +101,7 @@ def file_process(argv):
         gap = np.mean(peak_ave) - np.mean(valley_ave)
 
         if line_number >= Parser.PAGESIZE:
-            xs.append(argv[1])
+            xs.append(str(argv[1]) + ' min')
             ys.append(gap)
         # if line_number >= Parser.PAGESIZE and p_model.predict(gap, K) != 0:
         #     count += 1
@@ -116,7 +116,8 @@ def file_process(argv):
     })
     # sns.distplot(df)
     # plt.show()
-    df.to_csv('BODY' + str(argv[1]) + '.csv', index=False)
+    df.to_csv('#DRY' + str(argv[1]) + '.csv', index=False)
+
 
 def main(argv):
     if len(argv) == 3:

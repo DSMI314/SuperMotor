@@ -34,7 +34,7 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    test_data = ['motor_0504_4Y7M_2_TOP']
+    test_data = ['drying_0504_2_DRY']
     for data in test_data:
         main([data])
     # main(sys.argv[1:])

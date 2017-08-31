@@ -227,7 +227,7 @@ class Model(object):
         })
         # sns.distplot(df)
         # plt.show()
-        df.to_csv('TOP' + str(int(time_interval / 60)) + '.csv', index=False)
+        df.to_csv('DRY' + str(int(time_interval / 60)) + '.csv', index=False)
         PresentationModel.write_to_file(self._components, mean, std)
         return mean, std
 

@@ -96,14 +96,14 @@ def main3():
 def main4():
     dfl = []
     for t in range(1, 4+1):
-        dfl.append(pd.read_csv('TOP' + str(t) + '.csv'))
+        dfl.append(pd.read_csv('#DRY' + str(t) + '.csv'))
     df = dfl[0].append(dfl[1]).append(dfl[2]).append(dfl[3]).reset_index()
     df = df.drop(['index'], axis=1)
 
     g = sns.FacetGrid(df, hue="recorded_time", size=5)
     g = g.map(sns.distplot, "gap_value")
     plt.ylabel('percentage (%)')
-    plt.title('gaps distribution depends on recorded time (TOP)')
+    plt.title('gaps distribution depends on recorded time (DRY)')
     plt.legend()
     plt.savefig('tm.png')
     plt.show()
@@ -130,5 +130,5 @@ def main5():
             # print(df)
 
 if __name__ == '__main__':
-    main5()
+    main4()
 
