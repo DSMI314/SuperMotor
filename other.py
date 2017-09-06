@@ -80,15 +80,15 @@ def main2():
 def main3():
     dfl = []
     for t in range(1, 4+1):
-        dfl.append(pd.read_csv('motor_HOOK' + str(t) + '_res.csv'))
+        dfl.append(pd.read_csv('motor_BODY' + str(t) + '_res.csv'))
     df = dfl[0].append(dfl[1]).append(dfl[2]).append(dfl[3]).reset_index()
     df = df.drop(['index'], axis=1)
     df.to_csv('sss.csv', index=False)
 
     g = sns.factorplot(x="K", y="false_positive_ratio", hue="recorded_time", col="delta_t", col_wrap=3, data=df)
     g.fig.subplots_adjust(top=0.9)
-    g.fig.suptitle('K v.s. false_positive_ratio for choice of K (HOOK)', fontsize=16)
-    plt.savefig('HOOK_delta_t.png')
+    g.fig.suptitle('K v.s. false_positive_ratio for choice of delta_t (BODY)', fontsize=16)
+    plt.savefig('BODY_delta_t.png')
     # plt.show()
     print(df)
 
@@ -96,14 +96,14 @@ def main3():
 def main4():
     dfl = []
     for t in range(1, 4+1):
-        dfl.append(pd.read_csv('#DRY' + str(t) + '.csv'))
+        dfl.append(pd.read_csv('TOP' + str(t) + '.csv'))
     df = dfl[0].append(dfl[1]).append(dfl[2]).append(dfl[3]).reset_index()
     df = df.drop(['index'], axis=1)
 
     g = sns.FacetGrid(df, hue="recorded_time", size=5)
     g = g.map(sns.distplot, "gap_value")
     plt.ylabel('percentage (%)')
-    plt.title('gaps distribution depends on recorded time (DRY)')
+    plt.title('gaps distribution depends on recorded time (TOP)')
     plt.legend()
     plt.savefig('tm.png')
     plt.show()

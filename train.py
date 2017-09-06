@@ -18,14 +18,14 @@ def main(argv):
         sys.exit(2)
 
     filename = argv[0]
-    labels = ['on']
+    labels = ['TOP']
     print('>> Processing file \"' + filename + '\"...')
 
     print('>> The machine is training (using ENVELOPE)...')
     timer_start = timeit.default_timer()
 
     model = Model(filename, labels)
-    model.run(240)
+    model.run(60)
     print('>> Completed the training (using ENVELOPE)!')
     timer_end = timeit.default_timer()
 
@@ -34,7 +34,7 @@ def main(argv):
 
 if __name__ == '__main__':
 
-    test_data = ['drying_0504_2_DRY']
+    test_data = ['motor_0504_4Y7M']
     for data in test_data:
         main([data])
     # main(sys.argv[1:])
