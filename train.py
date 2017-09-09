@@ -8,6 +8,7 @@ import timeit
 import numpy as np
 
 
+
 @profile
 def main(argv):
     if len(argv) == 0:
