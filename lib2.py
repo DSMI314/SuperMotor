@@ -83,9 +83,15 @@ class Model(object):
     """
     __PAGE_SIZE = 100
 
-    def __init__(self, model_name, page_size=__PAGE_SIZE):
+    def __init__(self, model_name=None, page_size=__PAGE_SIZE):
         self._model_name = model_name
+        if model_name is None:
+            self._model_name = ""
         self._page_size = page_size
+
+    @property
+    def page_size(self):
+        return self._page_size
 
     @abstractmethod
     def save_to_file(self):
@@ -166,8 +172,6 @@ class Model(object):
         peak_ave = np.mean(peaks[-pos:])
         valley_ave = np.mean(valleys[:pos])
         return peak_ave - valley_ave
-
-
 
 
 class SVMModel(Model):
@@ -333,9 +337,10 @@ class PresentationModel(object):
     """
 
     """
+    TARGET_FILE = 'prediction.txt'
+
     _POOL_SIZE = 20
     _BUFFER_SIZE = 20
-    _TARGET_FILE = 'prediction.txt'
 
     def __init__(self, model, pool_size=_POOL_SIZE, buffer_size=_BUFFER_SIZE):
         self._model = model
@@ -413,3 +418,37 @@ class PresentationPMModel(PresentationModel):
     """
     def __init__(self):
         pass
+
+
+class AnalogData(object):
+    """
+    class that holds analog data for N samples
+    """
+    # con-str
+    def __init__(self, max_len):
+        self.ax = deque([0.0] * max_len)
+        self.ay = deque([0.0] * max_len)
+        self.az = deque([0.0] * max_len)
+        self.maxLen = max_len
+
+    # ring buffer
+    def add_to_buf(self, buf, val):
+        if len(buf) < self.maxLen:
+            buf.append(val)
+        else:
+            buf.pop()
+            buf.appendleft(val)
+
+    # add data
+    def add(self, data):
+        assert(len(data) == 3)
+        self.add_to_buf(self.ax, data[0])
+        self.add_to_buf(self.ay, data[1])
+        self.add_to_buf(self.az, data[2])
+
+    def merge_to_list(self):
+        tmps = [[], [], []]
+        tmps[0] = list(self.ax)
+        tmps[1] = list(self.ay)
+        tmps[2] = list(self.az)
+        return tmps
