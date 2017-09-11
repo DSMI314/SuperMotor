@@ -309,21 +309,3 @@ class AnalogData(object):
         tmps[1] = list(self.ay)
         tmps[2] = list(self.az)
         return tmps
-
-
-class Mode(object):
-    """
-
-    """
-    def __init__(self, x, y, z):
-        assert(len(x) == len(y) and len(y) == len(z))
-        self.x = x
-        self.y = y
-        self.z = z
-        pca = decomposition.PCA(n_components=1)
-        rec = list(zip(self.x, self.y, self.z))
-        self.time_series = pca.fit_transform(rec)
-        self.mean = pca.mean_
-        self.components = pca.components_
-
-

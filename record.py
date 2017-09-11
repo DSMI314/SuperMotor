@@ -41,9 +41,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        raise ValueError('Only accept exactly 2 parameters.\n \
-                        :param argv:\n \
-                        argv[0]: output_file_name\n \
-                        argv[1]: connect_port_name\n')
     main(sys.argv[1:])

@@ -29,6 +29,15 @@ class Parser(object):
             fp.write(str(line[i]))
             fp.write(',') if i < n - 1 else fp.write('\n')
 
+    @staticmethod
+    def concatenate(list1, list2):
+        result = []
+        for x in list1:
+            result.append(x)
+        for y in list2:
+            result.append(y)
+        return result
+
 
 class Mode(object):
     """
@@ -81,9 +90,9 @@ class Model(object):
     """
 
     """
-    __PAGE_SIZE = 100
+    _PAGE_SIZE = 100
 
-    def __init__(self, model_name=None, page_size=__PAGE_SIZE):
+    def __init__(self, model_name=None, page_size=_PAGE_SIZE):
         self._model_name = model_name
         if model_name is None:
             self._model_name = ""
@@ -108,8 +117,8 @@ class Model(object):
         :param model_name:
         :return:
         """
-        fp = open(model_name + '.mod', 'r')
-        model_type = fp.readline()
+        fp = open(model_name + '.in', 'r')
+        model_type = fp.readline().strip()
         page_size = int(fp.readline())
         fp.close()
 
@@ -136,12 +145,11 @@ class Model(object):
         gaps = []
 
         # process the first window; i.e., the first PAGESIZE rows of data
-        for j in range(1, self._page_size):
+        for j in range(1, self._page_size - 1):
             if raw_data[j] > raw_data[j - 1] and raw_data[j] > raw_data[j + 1]:
                 bisect.insort_left(peaks, raw_data[j], bisect.bisect_left(peaks, raw_data[j]))
             elif raw_data[j] < raw_data[j - 1] and raw_data[j] < raw_data[j + 1]:
                 bisect.insort_left(valleys, raw_data[j], bisect.bisect_left(valleys, raw_data[j]))
-
         gaps.append(self.__find_gaps(peaks, valleys))
 
         # slide from start to end
@@ -159,6 +167,7 @@ class Model(object):
                 bisect.insort_left(valleys, raw_data[e], bisect.bisect_left(valleys, raw_data[e]))
             gaps.append(self.__find_gaps(peaks, valleys))
 
+        assert(len(gaps) > 0)
         return gaps
 
     def __find_gaps(self, peaks, valleys):
@@ -168,6 +177,10 @@ class Model(object):
         :param valleys:
         :return:
         """
+        if len(peaks) == 0:
+            peaks = [0]
+        if len(valleys) == 0:
+            valleys = [0]
         pos = int(self._page_size * 10.0 / 100.0)
         peak_ave = np.mean(peaks[-pos:])
         valley_ave = np.mean(valleys[:pos])
@@ -179,15 +192,16 @@ class SVMModel(Model):
 
     """
     __FOLD_COUNT = 5
+    __PAGE_SIZE = Model._PAGE_SIZE
 
-    def __init__(self, model_name, page_size, fold_count=__FOLD_COUNT):
+    def __init__(self, model_name, page_size=__PAGE_SIZE, fold_count=__FOLD_COUNT):
         super(SVMModel, self).__init__(model_name, page_size)
         self.__FOLD_COUNT = fold_count
 
         self.__mode_size = 0
 
         self.__xs, self.__ys = None, None
-        self.__clf = SVC()
+        self.__clf = SVC(kernel='linear')
 
     @property
     def mode_size(self):
@@ -203,6 +217,7 @@ class SVMModel(Model):
         assert(isinstance(mode_list[0], Mode))
         assert(len(mode_list) >= 2)
         self.__xs, self.__ys = self.__build(mode_list)
+        self.__mode_size = len(mode_list)
         self.__clf.fit(self.__xs, self.__ys)
 
     def __build(self, mode_list):
@@ -234,38 +249,35 @@ class SVMModel(Model):
         # read file
         for i in range(len(mode_list)):
             mode = mode_list[i]
-            raw_data = mode.time_series
+            raw_data = Model().get_gap_time_series(mode)
             cell_size = int(len(raw_data) / self.__FOLD_COUNT)
-            ##
-            train_data = raw_data[:cell_size * offset] + raw_data[cell_size * (offset + 1):]
-            ##
-            gap_time_series = self.get_gap_time_series(train_data)
+            gap_time_series = raw_data[:cell_size * offset] + raw_data[cell_size * (offset + 1):]
             for gap in gap_time_series:
                 xs.append([gap])
                 ys.append(i)
 
-        clf = SVC()
+        clf = SVC(kernel='linear')
         clf.fit(xs, ys)
 
         """
         predict
         """
+
         score = []
         for i in range(len(mode_list)):
             mode = mode_list[i]
-            raw_data = mode.time_series
+            raw_data = Model().get_gap_time_series(mode)
             cell_size = int(len(raw_data) / self.__FOLD_COUNT)
 
             # now at mode i
             print('now at mode %d' % i)
-            test_data = raw_data[cell_size * offset: cell_size * (offset + 1)]
-            gap_time_series = self.get_gap_time_series(test_data)
+            gap_time_series = raw_data[cell_size * offset: cell_size * (offset + 1)]
             result = []
             hit = 0
             for gap in gap_time_series:
-                y = clf.predict(gap)
+                y = clf.predict([[gap]])[0]
                 result.append(y)
-                if pd == i:
+                if y == i:
                     hit += 1
             print(result)
             hit_ratio = hit / len(gap_time_series)
@@ -278,7 +290,7 @@ class SVMModel(Model):
 
         :return:
         """
-        fp = open(self._model_name + '.mod', 'w')
+        fp = open(self._model_name + '.in', 'w')
         fp.write('SVMModel\n')
         fp.write(str(self._page_size) + '\n')
         Parser.write_by_line(fp, self.__xs)
@@ -297,7 +309,7 @@ class SVMModel(Model):
 
         :return:
         """
-        fp = open(self._model_name + '.mod', 'r')
+        fp = open(self._model_name + '.in', 'r')
 
         # discard header
         fp.readline()
@@ -310,11 +322,11 @@ class SVMModel(Model):
         for token in fp.readline().split(','):
             ys.append(int(token))
 
+        fp.close()
+
         self.__xs, self.__ys = xs, ys
         self.__clf.fit(xs, ys)
-        print(xs)
-
-        fp.close()
+        self.__mode_size = len(np.unique(ys))
 
 
 class PMModel(Model):
@@ -350,7 +362,7 @@ class PresentationModel(object):
     @staticmethod
     def apply(model):
         if isinstance(model, SVMModel):
-            PresentationSVMModel(model)
+            return PresentationSVMModel(model)
 
 
 class PresentationSVMModel(PresentationModel):
@@ -369,9 +381,16 @@ class PresentationSVMModel(PresentationModel):
 
         # (mode0, mode1, ..~, modeNone)
         self.__pool_count = [0 for _ in range(self.__mode_size)] + [pool_size]
-
         self.__mean_buffer = deque([0] * self._buffer_size)
         self.__now_mean = 0
+
+    @property
+    def mean_buffer(self):
+        return self.__mean_buffer
+
+    @property
+    def now_mean(self):
+        return self.__now_mean
 
     def add_to_pool(self, val):
         """
@@ -409,7 +428,7 @@ class PresentationSVMModel(PresentationModel):
         return max(dic)[1]
 
     def predict(self):
-        return self.__model.predict(self.__now_mean)
+        return int(self.__model.predict(self.__now_mean))
 
 
 class PresentationPMModel(PresentationModel):

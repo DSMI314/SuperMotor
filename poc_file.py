@@ -11,11 +11,11 @@ def main(argv):
 
     :param argv:
     argv[0]: client_ID
-    argv[1]: connect_port_name
+    argv[1]: file_name (with .csv)
     :return:
     """
     _ID = argv[0]
-    _PORT_NAME = argv[1]
+    _FILE_NAME = argv[1]
 
     model = Model.read_from_file(_ID)
     p_model = PresentationModel.apply(model)
@@ -23,19 +23,17 @@ def main(argv):
 
     print('>> Start to receive data...')
 
-    # open serial port
-    ser = serial.Serial(_PORT_NAME, 9600)
-    for _ in range(20):
-        ser.readline()
+    fp = open(_FILE_NAME, 'r')
 
-    while True:
+    for line in fp:
         try:
-            line = ser.readline()
-            data = [float(val) for val in line.decode().split(',')]
+            # line = ser.readline()
+            data = [float(val) for val in line.split(',')[1:]]
             if len(data) == 3:
                 cache.add(data)
                 data_list = cache.merge_to_list()
                 mode = Mode(data_list[0], data_list[1], data_list[2])
+
                 gaps = Model().get_gap_time_series(mode)
                 gap = np.mean(gaps)
 
@@ -44,8 +42,8 @@ def main(argv):
                 prediction = p_model.predict()
                 p_model.add_to_pool(prediction)
 
-                print(p_model.__mean_buffer)
-                print('%f => res:%d' % (p_model.__now_mean, prediction))
+                print(p_model.mean_buffer)
+                print('%f => res:%d' % (p_model.now_mean, prediction))
 
                 fp = open(p_model.TARGET_FILE, 'w')
                 fp.write(str(p_model.take_result()))
@@ -54,8 +52,7 @@ def main(argv):
         except KeyboardInterrupt:
             break
     # close serial
-    ser.flush()
-    ser.close()
+    fp.close()
 
 
 if __name__ == '__main__':
