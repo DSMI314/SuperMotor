@@ -29,15 +29,6 @@ class Parser(object):
             fp.write(str(line[i]))
             fp.write(',') if i < n - 1 else fp.write('\n')
 
-    @staticmethod
-    def concatenate(list1, list2):
-        result = []
-        for x in list1:
-            result.append(x)
-        for y in list2:
-            result.append(y)
-        return result
-
 
 class Mode(object):
     """
