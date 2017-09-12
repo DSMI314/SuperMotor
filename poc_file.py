@@ -1,8 +1,7 @@
-import serial
 import sys
 import numpy as np
 
-from lib2 import Parser, Model, PresentationModel, AnalogData, Mode
+from lib import Model, PresentationModel, AnalogData, Mode
 
 
 def main(argv):

@@ -1,8 +1,7 @@
 import serial
 import sys
-import numpy as np
 
-from lib import Model, PresentationModel, AnalogData, Mode
+from lib import PresentationModel, AnalogData, Model
 
 
 def main(argv):
@@ -10,8 +9,9 @@ def main(argv):
     When the model has built, then load data real-time to predict the state at the moment.
 
     :param argv:
-    argv[0]: client_ID
+    argv[0]: client ID
     argv[1]: connect_port_name
+
     :return:
     """
     _ID = argv[0]
@@ -30,32 +30,30 @@ def main(argv):
 
     while True:
         try:
-            line = ser.readline()
-            data = [float(val) for val in line.decode().split(',')]
+            # retrieve the line
+            line = ser.readline().decode()
+            data = [float(val) for val in line.split(',')]
+
+            # no missing column in the data
             if len(data) == 3:
+                # calculate mean gap
                 cache.add(data)
-                data_list = cache.merge_to_list()
-                mode = Mode(data_list[0], data_list[1], data_list[2])
-                gaps = Model().get_gap_time_series(mode)
-                gap = np.mean(gaps)
+                p_model.fit(cache)
 
-                p_model.add_to_buffer(gap)
+                # is "gap" in K-envelope?
+                state = p_model.predict()
+                print("OK" if state == 0 else "warning !!!")
 
-                prediction = p_model.predict()
-                p_model.add_to_pool(prediction)
-
-                print(p_model.mean_buffer)
-                print('%f => res:%d' % (p_model.now_mean, prediction))
-
+                # put result into the target file
                 fp = open(p_model.TARGET_FILE, 'w')
-                fp.write(str(p_model.take_result()))
+                fp.write(str(state))
                 fp.close()
 
         except KeyboardInterrupt:
+            print('>> exiting !')
             break
-    # close serial
-    ser.flush()
-    ser.close()
+        except IOError:
+            continue
 
 
 if __name__ == '__main__':
