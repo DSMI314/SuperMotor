@@ -41,12 +41,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        print('Error: Only accept exactly 2 parameters.')
-        print()
-        print(':param argv:')
-        print('argv[0]: output_file_name')
-        print('argv[1]: connect_port_name')
-        print()
-        exit(2)
     main(sys.argv[1:])
