@@ -1,11 +1,7 @@
 import sys
-from lib import Model, PMModel, Mode
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
+from lib import Mode, PMModel
 from memory_profiler import profile
 import timeit
-import numpy as np
 
 
 # @profile

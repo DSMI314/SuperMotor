@@ -1,8 +1,7 @@
 import serial
 import sys
-import numpy as np
 
-from lib import Model, PresentationModel, AnalogData, Mode
+from lib import Model, PresentationModel
 
 
 def main(argv):
@@ -19,7 +18,6 @@ def main(argv):
 
     model = Model.read_from_file(_ID)
     p_model = PresentationModel.apply(model)
-    cache = AnalogData(model.page_size)
 
     print('>> Start to receive data...')
 
@@ -33,13 +31,7 @@ def main(argv):
             line = ser.readline()
             data = [float(val) for val in line.decode().split(',')]
             if len(data) == 3:
-                cache.add(data)
-                data_list = cache.merge_to_list()
-                mode = Mode(data_list[0], data_list[1], data_list[2])
-                gaps = Model().get_gap_time_series(mode)
-                gap = np.mean(gaps)
-
-                p_model.add_to_buffer(gap)
+                p_model.add_to_buffer(data)
 
                 prediction = p_model.predict()
                 p_model.add_to_pool(prediction)

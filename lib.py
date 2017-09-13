@@ -413,6 +413,7 @@ class PresentationModel(object):
         self._model = model
         self._pool_size = pool_size
         self._buffer_size = buffer_size
+        self._cache = AnalogData(model.page_size)
 
     @staticmethod
     def apply(model):
@@ -455,23 +456,34 @@ class PresentationSVMModel(PresentationModel):
         :param val:
         :return:
         """
+        assert(isinstance(val, int))
+
         if len(self.__pool) == self._POOL_SIZE:
             x = self.__pool.pop()
             self.__pool_count[x] -= 1
             self.__pool.appendleft(val)
         self.__pool_count[val] += 1
 
-    def add_to_buffer(self, val):
+    def add_to_buffer(self, data):
         """
 
-        :param val:
+        :param data:
         :return:
         """
+        assert(len(data) == 3)
+        assert(isinstance(data[0], float))
+
+        self._cache.add(data)
+        data_list = self._cache.merge_to_list()
+        mode = Mode(data_list[0], data_list[1], data_list[2])
+        gaps = Model().get_gap_time_series(mode)
+        gap = np.mean(gaps)
+
         if len(self.__mean_buffer) == self._buffer_size:
             x = self.__mean_buffer.pop()
             self.__now_mean = (self.__now_mean * self._buffer_size - x) / len(self.__mean_buffer)
-        self.__mean_buffer.appendleft(val)
-        self.__now_mean = (self.__now_mean * (len(self.__mean_buffer) - 1) + val) / len(self.__mean_buffer)
+        self.__mean_buffer.appendleft(gap)
+        self.__now_mean = (self.__now_mean * (len(self.__mean_buffer) - 1) + gap) / len(self.__mean_buffer)
 
     def take_result(self):
         """
@@ -500,10 +512,12 @@ class PresentationPMModel(PresentationModel):
         self.__model = model
         self._now_gap = None
 
-    def fit(self, analog_data):
-        assert(isinstance(analog_data, AnalogData))
+    def add(self, data):
+        assert(len(data) == 3)
+        assert(isinstance(data[0], float))
 
-        data_list = analog_data.merge_to_list()
+        self._cache.add(data)
+        data_list = self._cache.merge_to_list()
         mode = Mode(data_list[0], data_list[1], data_list[2], self._model.components)
         gap_time_series = self.__model.get_gap_time_series(mode)
         self._now_gap = np.mean(gap_time_series)

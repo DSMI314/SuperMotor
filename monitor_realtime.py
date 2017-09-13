@@ -1,7 +1,7 @@
 import serial
 import sys
 
-from lib import PresentationModel, AnalogData, Model
+from lib import Model, PresentationModel
 
 
 def main(argv):
@@ -19,7 +19,6 @@ def main(argv):
 
     model = Model.read_from_file(_ID)
     p_model = PresentationModel.apply(model)
-    cache = AnalogData(model.page_size)
 
     print('>> Start to receive data...')
 
@@ -37,8 +36,7 @@ def main(argv):
             # no missing column in the data
             if len(data) == 3:
                 # calculate mean gap
-                cache.add(data)
-                p_model.fit(cache)
+                p_model.add(data)
 
                 # is "gap" in K-envelope?
                 state = p_model.predict()
