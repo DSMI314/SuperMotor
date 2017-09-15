@@ -1,27 +1,24 @@
 import bisect
 import statistics
-import sys
+import numpy as np
+
 from collections import deque
 from abc import abstractmethod
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
 from sklearn import decomposition
 from sklearn.svm import SVC
 
 
 class Parser(object):
     """
-
+    Handle special data type
     """
     @staticmethod
     def write_by_line(fp, line):
         """
+        Write line into file with splitting comma.
 
-        :param fp:
-        :param line:
+        :param fp: file source
+        :param line: the target line we wanna write into file
         :return:
         """
         n = len(line)
@@ -32,35 +29,52 @@ class Parser(object):
 
 class Mode(object):
     """
+    The unit data frame
 
+    :private attributes:
+        x: acceleration at x-axis
+        y: acceleration at y-axis
+        z: acceleration at z-axis
+        time_series: the sequence after combined with x,y,z by PCA
+        components: the components when wanna combine x,y,z into time_series
+        mean: the mean vector of (x,y,z)
     """
     def __init__(self, x, y, z, components=None):
         assert(len(x) == len(y) and len(y) == len(z))
-        self.x = x
-        self.y = y
-        self.z = z
+        self.__x = x
+        self.__y = y
+        self.__z = z
 
-        self.time_series = []
+        self.__time_series = []
         if components is None:
             pca = decomposition.PCA(n_components=1)
-            rec = list(zip(self.x, self.y, self.z))
-            self.time_series = pca.fit_transform(rec)
-            self.mean = pca.mean_
-            self.components = pca.components_
+            rec = list(zip(self.__x, self.__y, self.__z))
+            self.__time_series = pca.fit_transform(rec)
+            self.__mean = pca.mean_
+            self.__components = pca.components_
         else:
             assert(len(components) == 3)
             assert(isinstance(components[0], float))
-            self.components = components
-            self.mean = [np.mean(x), np.mean(y), np.mean(z)]
+            self.__components = components
+            self.__mean = [np.mean(x), np.mean(y), np.mean(z)]
             for i in range(len(x)):
-                self.time_series.append(x[i] * components[0] + y[i] * components[1] + z[i] * components[2])
+                self.__time_series.append(x[i] * components[0] + y[i] * components[1] + z[i] * components[2])
 
+    @property
+    def components(self):
+        return self.__components
+
+    @property
+    def time_series(self):
+        return self.__time_series
 
     @staticmethod
     def read_csv(file_name):
         """
+        Read data from specific format .csv file
 
         :param file_name: filename string "without" extension.
+        :return: encrypted as Mode class
         """
         fp = open(file_name + '.csv', 'r')
 
@@ -68,6 +82,7 @@ class Mode(object):
 
         for line in fp:
             items = line.strip().split(',')
+
             # discard every row containing missing data
             if len(items) <= 3:
                 continue
@@ -90,7 +105,11 @@ class Mode(object):
 
 class Model(object):
     """
+    The base class which will analyze data into information.
 
+    :protected attributes:
+        model_name: model's name
+        page_size: the size of a window; a window generates a gap
     """
     _PAGE_SIZE = 100
 
@@ -115,9 +134,10 @@ class Model(object):
     @staticmethod
     def read_from_file(model_name):
         """
+        Read the specific format from .in file to recover the model.
 
-        :param model_name:
-        :return:
+        :param model_name: mode's file name
+        :return: the appropriate recovered model
         """
         fp = open(model_name + '.in', 'r')
         model_type = fp.readline().strip()
@@ -132,16 +152,15 @@ class Model(object):
             model = PMModel(model_name, page_size)
 
         assert(model is not None)
-
         model.read_from_file()
         return model
 
     def get_gap_time_series(self, mode):
         """
-        Find gaps for the input data.
+        Get gap curve for the mode by using this model's parameter.
 
-        :param mode:
-        :return:
+        :param mode: wanna be retrieved
+        :return: [gap1, gap2, ...]
         """
         assert(isinstance(mode, Mode))
         raw_data = mode.time_series
@@ -178,10 +197,11 @@ class Model(object):
 
     def __find_gaps(self, peaks, valleys):
         """
+        Given lists of peak and valley, i.e., the window information , translate them into the feature "gap"
 
-        :param peaks:
-        :param valleys:
-        :return:
+        :param peaks: [peak1, peak2, ...]
+        :param valleys: [valley1, valley2, ...]
+        :return: gap
         """
         if len(peaks) == 0:
             peaks = [0]
@@ -195,7 +215,12 @@ class Model(object):
 
 class SVMModel(Model):
     """
+    The model identifying different modes by using SVM.
 
+    :attr mode_size: the total count of modes
+    :attr xs: train_X
+    :attr ys: predict_X
+    :attr clf: SVM classifier
     """
     __FOLD_COUNT = 5
     __PAGE_SIZE = Model._PAGE_SIZE
@@ -215,22 +240,25 @@ class SVMModel(Model):
 
     def fit(self, mode_list):
         """
+        Given a list of mode we wanna identify, this model will train automatically.
 
-        :param mode_list:
+        :param mode_list: [mode1, mode2, ...]
         :return:
         """
         assert(isinstance(mode_list, list))
         assert(isinstance(mode_list[0], Mode))
         assert(len(mode_list) >= 2)
+
         self.__xs, self.__ys = self.__build(mode_list)
         self.__mode_size = len(mode_list)
         self.__clf.fit(self.__xs, self.__ys)
 
     def __build(self, mode_list):
         """
+        Given a list of mode we wanna identify, this model will do __FOLD_COUNT-fold cross validation.
 
-        :param mode_list:
-        :return:
+        :param mode_list: [mode1, mode2, ...]
+        :return: [train_X], [predict_X]
         """
         max_score = 0
         xs, ys = None, None
@@ -244,10 +272,11 @@ class SVMModel(Model):
 
     def __validate(self, offset, mode_list):
         """
+        Split data into __FOLD_COUNT cells equally, then put "offset"-th cell as test data, otherwise as train data.
 
-        :param offset:
-        :param mode_list:
-        :return:
+        :param offset: #-th as test data
+        :param mode_list: [mode1, mode2, ...]
+        :return: accuracy, [train_X], [predict_X]
         """
         # pre-process
         xs = []
@@ -264,9 +293,16 @@ class SVMModel(Model):
 
         clf = SVC(kernel='linear')
         clf.fit(xs, ys)
+        return self.__validate_score(clf, offset, mode_list), xs, ys
 
+    def __validate_score(self, clf, offset, mode_list):
         """
-        predict
+        Given a specific validation method, calculate the performance score.
+
+        :param clf: classifier
+        :param offset: #-th as test data
+        :param mode_list: [mode1, mode2, ...]
+        :return: score
         """
 
         score = []
@@ -289,10 +325,11 @@ class SVMModel(Model):
             hit_ratio = hit / len(gap_time_series)
             print('success ratio = %.1f%%\n' % (hit_ratio * 100))
             score.append(hit_ratio)
-        return np.mean(score), xs, ys
+        return np.mean(score)
 
     def save_to_file(self):
         """
+        Save the features.
 
         :return:
         """
@@ -303,15 +340,9 @@ class SVMModel(Model):
         Parser.write_by_line(fp, self.__ys)
         fp.close()
 
-    def predict(self, x):
-        """
-
-        :return:
-        """
-        return self.__clf.predict(x)
-
     def read_from_file(self):
         """
+        Whenever model's name is set, recover the model by reading the feature file.
 
         :return:
         """
@@ -321,6 +352,7 @@ class SVMModel(Model):
         fp.readline()
         fp.readline()
 
+        # read features
         xs = []
         ys = []
         for token in fp.readline().split(','):
@@ -334,41 +366,69 @@ class SVMModel(Model):
         self.__clf.fit(xs, ys)
         self.__mode_size = len(np.unique(ys))
 
+    def predict(self, x):
+        """
+        Return the classification of "x".
+
+        :param x: gap
+        :return: prediction
+        """
+        return self.__clf.predict(x)
+
 
 class PMModel(Model):
     """
+    The model monitoring machine continuously to detect anomaly.
 
+    :private attributes:
+        sample_rate: # rows per every second
+        cof_k: the coefficient of k
+        components: the components applied in translating incoming data rows
+        mean: the mean value of the gap series from the mode
+        std: the standard deviation of the gap series from the mode
     """
     __PAGE_SIZE = Model._PAGE_SIZE
     __SAMPLE_RATE = 20
-    __COEF_K = 2
+    __COF_K = 2
 
-    def __init__(self, model_name, page_size=__PAGE_SIZE, sample_rate=__SAMPLE_RATE, coef_k=__COEF_K):
+    def __init__(self, model_name, page_size=__PAGE_SIZE, sample_rate=__SAMPLE_RATE, coef_k=__COF_K):
         super(PMModel, self).__init__(model_name, page_size)
-        self._sample_rate = sample_rate
-        self._coef_k = coef_k
-        self._components = None
-        self._mean = None
-        self._std = None
+        self.__sample_rate = sample_rate
+        self.__cof_k = coef_k
+        self.__components = None
+        self.__mean = None
+        self.__std = None
 
     @property
     def components(self):
-        return self._components
+        return self.__components
 
     def fit(self, mode, interval):
+        """
+        Consider the first "interval" seconds of data from "mode".
+
+        :param mode: normal mode of the machine
+        :param interval: retrieve # seconds from beginning as considered
+        :return:
+        """
         assert(isinstance(mode, Mode))
         assert(isinstance(interval, int))
 
-        x = mode.x[:interval * self._sample_rate]
-        y = mode.y[:interval * self._sample_rate]
-        z = mode.z[:interval * self._sample_rate]
+        x = mode.x[:interval * self.__sample_rate]
+        y = mode.y[:interval * self.__sample_rate]
+        z = mode.z[:interval * self.__sample_rate]
         capture_mode = Mode(x, y, z)
-        self._components = capture_mode.components
+        self.__components = capture_mode.components
         gap_time_series = self.get_gap_time_series(capture_mode)
-        self._mean = statistics.mean(gap_time_series)
-        self._std = statistics.pstdev(gap_time_series)
+        self.__mean = statistics.mean(gap_time_series)
+        self.__std = statistics.pstdev(gap_time_series)
 
     def save_to_file(self):
+        """
+        Save the features.
+
+        :return:
+        """
         fp = open(self._model_name + '.in', 'w')
 
         # place header
@@ -376,33 +436,51 @@ class PMModel(Model):
         fp.write(str(self._page_size) + '\n')
 
         # place features
-        Parser.write_by_line(fp, self._components[0])
-        fp.write(str(self._mean) + '\n')
-        fp.write(str(self._std) + '\n')
+        Parser.write_by_line(fp, self.__components[0])
+        fp.write(str(self.__mean) + '\n')
+        fp.write(str(self.__std) + '\n')
 
         fp.close()
 
     def read_from_file(self):
+        """
+        Whenever model's name is set, recover the model by reading the feature file.
+
+        :return:
+        """
         fp = open(self._model_name + '.in', 'r')
 
         # discard header
         fp.readline()
         fp.readline()
 
-        self._components = []
+        # read features
+        self.__components = []
         for token in fp.readline().split(','):
-            self._components.append(float(token))
+            self.__components.append(float(token))
 
-        self._mean = float(fp.readline())
-        self._std = float(fp.readline())
+        self.__mean = float(fp.readline())
+        self.__std = float(fp.readline())
 
     def predict(self, x):
-        return 0 if abs(x - self._mean) <= self._coef_k * self._std else 1
+        """
+        Return the classification of "x".
+
+        :param x: gap
+        :return: {0 -> normal, 1 -> anomaly}
+        """
+        return 0 if abs(x - self.__mean) <= self.__cof_k * self.__std else 1
 
 
 class PresentationModel(object):
     """
+    The intermediate model to maintain I/O.
 
+    :protected attributes:
+        model: model's name
+        pool_size: the size of pool
+        buffer_size: the size of buffer
+        cache: reading data
     """
     TARGET_FILE = 'prediction.txt'
 
@@ -417,6 +495,12 @@ class PresentationModel(object):
 
     @staticmethod
     def apply(model):
+        """
+        Apply the appropriate model to operate by using factory design pattern.
+
+        :param model: target model
+        :return: appropriate model
+        """
         if isinstance(model, SVMModel):
             return PresentationSVMModel(model)
         if isinstance(model, PMModel):
@@ -425,7 +509,14 @@ class PresentationModel(object):
 
 class PresentationSVMModel(PresentationModel):
     """
+    The intermediate SVMModel to maintain I/O.
 
+    :private attributes:
+        model: SVMModel
+        pool: pool buffer to vote
+        pool_count: how many the specific predictions have been output
+        mean_buffer: mean of gaps in the cache
+        now_mean: mean of gaps in the buffer now
     """
     __POOL_SIZE = PresentationModel._POOL_SIZE
     __BUFFER_SIZE = PresentationModel._BUFFER_SIZE
@@ -434,11 +525,10 @@ class PresentationSVMModel(PresentationModel):
         super(PresentationSVMModel, self).__init__(model, pool_size, buffer_size)
 
         self.__model = model
-        self.__mode_size = model.mode_size
         self.__pool = deque([-1] * pool_size)
 
         # (mode0, mode1, ..~, modeNone)
-        self.__pool_count = [0 for _ in range(self.__mode_size)] + [pool_size]
+        self.__pool_count = [0 for _ in range(model.mode_size)] + [pool_size]
         self.__mean_buffer = deque([0] * self._buffer_size)
         self.__now_mean = 0
 
@@ -450,24 +540,26 @@ class PresentationSVMModel(PresentationModel):
     def now_mean(self):
         return self.__now_mean
 
-    def add_to_pool(self, val):
+    def add_to_pool(self, label):
         """
+        Add prediction "label" to pool.
 
-        :param val:
+        :param label: prediction
         :return:
         """
-        assert(isinstance(val, int))
+        assert(isinstance(label, int))
 
         if len(self.__pool) == self._POOL_SIZE:
             x = self.__pool.pop()
             self.__pool_count[x] -= 1
-            self.__pool.appendleft(val)
-        self.__pool_count[val] += 1
+            self.__pool.appendleft(label)
+        self.__pool_count[label] += 1
 
     def add_to_buffer(self, data):
         """
+        Translate new data (x, y, z) and add it to the cache. Then update the buffer.
 
-        :param data:
+        :param data: (x, y, z)
         :return:
         """
         assert(len(data) == 3)
@@ -487,22 +579,32 @@ class PresentationSVMModel(PresentationModel):
 
     def take_result(self):
         """
+        Return the most occurrence of label in the pool.
 
-        :return:
+        :return: label
         """
         dic = []
-        for i in range(self.__mode_size):
+        for i in range(self.__model.mode_size):
             dic.append([self.__pool_count[i], i])
-        dic.append([self.__pool_count[self.__mode_size], -1])
+        dic.append([self.__pool_count[self.__model.mode_size], -1])
         return max(dic)[1]
 
     def predict(self):
+        """
+        Return the prediction from the buffer by using this model.
+
+        :return: label
+        """
         return int(self.__model.predict(self.__now_mean))
 
 
 class PresentationPMModel(PresentationModel):
     """
+    The intermediate PMModel to maintain I/O.
 
+    :private attributes:
+        model: PMModel
+        now_gap: mean of gaps in the cache now
     """
     __POOL_SIZE = PresentationModel._POOL_SIZE
     __BUFFER_SIZE = PresentationModel._BUFFER_SIZE
@@ -510,9 +612,15 @@ class PresentationPMModel(PresentationModel):
     def __init__(self, model, pool_size=__POOL_SIZE, buffer_size=__BUFFER_SIZE):
         super(PresentationPMModel, self).__init__(model, pool_size, buffer_size)
         self.__model = model
-        self._now_gap = None
+        self.__now_gap = None
 
     def add(self, data):
+        """
+        Translate new data (x, y, z) and add it to the cache.
+
+        :param data: (x, y, z)
+        :return:
+        """
         assert(len(data) == 3)
         assert(isinstance(data[0], float))
 
@@ -520,41 +628,59 @@ class PresentationPMModel(PresentationModel):
         data_list = self._cache.merge_to_list()
         mode = Mode(data_list[0], data_list[1], data_list[2], self._model.components)
         gap_time_series = self.__model.get_gap_time_series(mode)
-        self._now_gap = np.mean(gap_time_series)
+        self.__now_gap = np.mean(gap_time_series)
 
     def predict(self):
-        return int(self.__model.predict(self._now_gap))
+        """
+        Return the prediction from the cache by using this model.
+
+        :return: label
+        """
+        return int(self.__model.predict(self.__now_gap))
 
 
 class AnalogData(object):
     """
-    class that holds analog data for N samples
-    """
-    # con-str
-    def __init__(self, max_len):
-        self.ax = deque([0.0] * max_len)
-        self.ay = deque([0.0] * max_len)
-        self.az = deque([0.0] * max_len)
-        self.maxLen = max_len
+    Hold analog data for "max_len" samples.
 
-    # ring buffer
-    def add_to_buf(self, buf, val):
-        if len(buf) < self.maxLen:
-            buf.append(val)
+    :private attributes:
+        ax: the buffer having acceleration at x-axis for "max_len" size
+        ay: the buffer having acceleration at y-axis for "max_len" size
+        az: the buffer having acceleration at z-axis for "max_len" size
+        max_len: the size of the deque structure
+    """
+    def __init__(self, max_len):
+        self.__ax = deque([0.0] * max_len)
+        self.__ay = deque([0.0] * max_len)
+        self.__az = deque([0.0] * max_len)
+        self.__max_len = max_len
+
+    def add(self, data):
+        """
+        Push data into the buffer.
+
+        :param data: (x, y, z)
+        :return:
+        """
+        assert(len(data) == 3)
+
+        self.__add_to_buf(self.__ax, data[0])
+        self.__add_to_buf(self.__ay, data[1])
+        self.__add_to_buf(self.__az, data[2])
+
+    def merge_to_list(self):
+        return [list(self.__ax), list(self.__ay), list(self.__az)]
+
+    def __add_to_buf(self, buf, val):
+        """
+        Add "val" to the newest position of deque "buf". If overflow, pop out the oldest position one.
+
+        :param buf: the one-axis buffer
+        :param val: original new value
+        :return:
+        """
+        if len(buf) < self.__max_len:
+            buf.appendleft(val)
         else:
             buf.pop()
             buf.appendleft(val)
-
-    # add data
-    def add(self, data):
-        assert(len(data) == 3)
-        self.add_to_buf(self.ax, data[0])
-        self.add_to_buf(self.ay, data[1])
-        self.add_to_buf(self.az, data[2])
-
-    def merge_to_list(self):
-        tmps = [[], [], []]
-        tmps[0] = list(self.ax)
-        tmps[1] = list(self.ay)
-        tmps[2] = list(self.az)
-        return tmps
