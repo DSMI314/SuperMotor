@@ -1,754 +1,686 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from collections import deque
+import bisect
 import statistics
-import sys
-import pandas as pd
-import seaborn as sns
+import numpy as np
 
-from sklearn.svm import SVC
+from collections import deque
+from abc import abstractmethod
 from sklearn import decomposition
+from sklearn.svm import SVC
 
 
 class Parser(object):
     """
-    Given filename, this static class could parse them into useful information.
+    Handle special data type
     """
-    PAGESIZE = 100
-    TOP_PEAK_PERCENT = 10
-    DATA_FOLDER_PATH = 'recorded_original_data//'
-    MEAN_GAP_DIM = 2
-    ORIGINAL_ZERO_ADJUST = False
-
-    HARD_COMP = [[-0.91985032, -0.06703556,  0.3864992],
-                 [-0.91985032, -0.06703556, 0.3864992]]
-    """
-    [0.71000981,  0.15992345,  0.68579192], # HOOK
-    [-0.17194572, -0.17941319,  0.96863078], # BODY
-    [0.84898579,  0.39951426, -0.34584893]] # TOP
-    [-0.91985032, -0.06703556,  0.3864992 ] # DRY
-    """
-
     @staticmethod
-    def read(filename):
+    def write_by_line(fp, line):
         """
-        Load file(.csv) and store them.
+        Write line into file with splitting comma.
 
-        :param filename: filename string "without" extension.
-        :return: n*1 dimension list
+        :param fp: file source
+        :param line: the target line we wanna write into file
+        :return:
         """
-        records = Parser.__load_csv(filename)
-        return np.array(records)
+        n = len(line)
+        for i in range(n):
+            fp.write(str(line[i]))
+            fp.write(',') if i < n - 1 else fp.write('\n')
 
-    @staticmethod
-    def parse(buffer, means=None, components=None):
-        """
-        Do PCA with some filters; e.g. discard a noise axis.
 
-        :param buffer: n*1 dimension list
-        :return: n*1 dimension list
-        """
-        # for k in range(len(buffer)):
-        #     buffer[k][0] = 0.0
-        if components is not None:
-            res = []
-            for i in range(len(buffer)):
-                pca = 0
-                for k in range(3):
-                    pca += (buffer[i][k] - means[k]) * components[k]
-                res.append([pca])
-            return res
+class Mode(object):
+    """
+    The unit data frame
+
+    :private attributes:
+        x: acceleration at x-axis
+        y: acceleration at y-axis
+        z: acceleration at z-axis
+        time_series: the sequence after combined with x,y,z by PCA
+        components: the components when wanna combine x,y,z into time_series
+        mean: the mean vector of (x,y,z)
+    """
+    def __init__(self, x, y, z, components=None):
+        assert(len(x) == len(y) and len(y) == len(z))
+        self.__x = x
+        self.__y = y
+        self.__z = z
+
+        self.__time_series = []
+        if components is None:
+            pca = decomposition.PCA(n_components=1)
+            rec = list(zip(self.__x, self.__y, self.__z))
+            self.__time_series = pca.fit_transform(rec)
+            self.__mean = pca.mean_
+            self.__components = pca.components_
         else:
-            records, means, components = Parser.__get_pca(buffer, 1)
-            # print(records)
-            return records, means, components
+            assert(len(components) == 3)
+            assert(isinstance(components[0], float))
+            self.__components = components
+            self.__mean = [np.mean(x), np.mean(y), np.mean(z)]
+            for i in range(len(x)):
+                self.__time_series.append(x[i] * components[0] + y[i] * components[1] + z[i] * components[2])
+
+    @property
+    def components(self):
+        return self.__components
+
+    @property
+    def time_series(self):
+        return self.__time_series
 
     @staticmethod
-    def slice(buffer, axis_index):
-        res = []
-        mean = [0.0] * 3
-        for i in range(len(buffer)):
-            res.append([buffer[i][axis_index]])
-            mean[axis_index] += buffer[i][axis_index]
-        mean[axis_index] /= len(buffer)
-        components = [0.0] * 3
-        components[axis_index] = 1.0
-        components = np.array([components])
-        return res, mean, components
-
-    @staticmethod
-    def sliding(buffer):
+    def read_csv(file_name):
         """
-        Split data into n-1 segments sequentially where each segment has "_PAGESIZE" size.
+        Read data from specific format .csv file
 
-        :param buffer: n*1 dimension list
-        :return: (n-1) * _PAGESIZE dimension list
+        :param file_name: filename string "without" extension.
+        :return: encrypted as Mode class
         """
-        result = []
-        for j in range(Parser.PAGESIZE, len(buffer)):
-            result.append(buffer[j - Parser.PAGESIZE: j])
-        return result
+        fp = open(file_name + '.csv', 'r')
 
-    @staticmethod
-    def paging(buffer):
-        """
-        Split it into several pages indepently which every page size is "_PAGESIZE".
+        xs, ys, zs = [], [], []
 
-        :param buffer: n*1 dimension list
-        :return: ceil(n/_PAGESIZE)*1 dimension list
-        """
-        result = []
-        for j in range(Parser.PAGESIZE, len(buffer), Parser.PAGESIZE):
-            result.append(buffer[j - Parser.PAGESIZE: j])
-        return result
-
-    @staticmethod
-    def find_gaps(data):
-        """
-        Find gaps for the input data.
-
-        :param data: _PAGESIZE*1 dimension list
-        :return: 1*3 dimension list
-        """
-        gap = []
-        for j in range(Parser.MEAN_GAP_DIM):
-            fragment = data[int(Parser.PAGESIZE * j / Parser.MEAN_GAP_DIM):
-                            int(Parser.PAGESIZE * (j + 1) / Parser.MEAN_GAP_DIM)]
-            peaks = Parser.find_peaks_sorted(fragment)
-            valleys = Parser.find_valley_sorted(fragment)
-            if len(peaks) == 0:
-                peaks.append(0)
-            if len(valleys) == 0:
-                valleys.append(0)
-            gap.append(np.mean(peaks) - np.mean(valleys))
-        return gap
-
-    @staticmethod
-    def __get_pca(records, n):
-        pca = decomposition.PCA(n_components=n)
-        pca.fit(records)
-        records = pca.transform(records)
-        print('mean = ' + str(pca.mean_))
-        # print coefficient
-        print('components = ' + str(pca.components_))
-        return records, pca.mean_, pca.components_
-
-    @staticmethod
-    def __load_csv(filename):
-        """
-        spider from csv which we experiment, then stored them into a list (n*3 dimension)
-
-        :param filename: filename string "without" extension.
-        """
-        fp = open(Parser.DATA_FOLDER_PATH + filename + '.csv', 'r')
-        records = []
         for line in fp:
             items = line.strip().split(',')
-            x, y, z = '0', '0', '0'
-            if len(items) > 1:
-                x = items[1]
-            if len(items) > 2:
-                y = items[2]
-            if len(items) > 3:
-                z = items[3]
 
-            values = [x, y, z]
-            records.append(values)
+            # discard every row containing missing data
+            if len(items) <= 3:
+                continue
 
-        # Discard some beginning data which may be noisy
-        del records[:int(len(records) / 30)]
-        n = len(records)
+            x, y, z = items[1], items[2], items[3]
 
-        for i in range(n):
-            rec = []
-            # Consider X, Y, Z axes
-            for k in range(3):
-                # If can convert string to float
-                try:
-                    val = float(records[i][k])
-                except ValueError:
-                    val = 0
-                rec.append(val)
+            # discard every row having error
+            try:
+                x, y, z = float(x), float(y), float(z)
+            except ValueError:
+                continue
 
-            # Replace it
-            records[i] = rec
-        return records
+            # preserve original data
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
 
-    @staticmethod
-    def do_zero_adjust(records):
-        rd = [[], [], []]
-        for k in range(len(records)):
-            for j in range(3):
-                rd[j].append(records[k][j])
-        for j in range(3):
-            mu = statistics.mean(rd[j])
-            for k in range(len(rd[j])):
-                rd[j][k] -= mu
-        result = []
-        for k in range(len(rd[0])):
-            result.append([rd[j][k] for j in range(3)])
-        return result
-
-    @staticmethod
-    def find_valley_sorted(xs, ratio=TOP_PEAK_PERCENT):
-        valleys = []
-        pagesize = len(xs)
-
-        for j in range(1, pagesize - 1):
-            now = xs[j]
-            prevv = xs[j - 1]
-            nextt = xs[j + 1]
-            # valley detected
-            if now < prevv and now < nextt:
-                valleys.append(now)
-        if len(valleys) == 0:
-            valleys.append(0)
-        valleys.sort()
-        valleys = valleys[:int(pagesize * ratio / 100)]
-        return valleys
-
-    @staticmethod
-    def find_peaks_sorted(xs, ratio=TOP_PEAK_PERCENT):
-        peaks = []
-        pagesize = len(xs)
-
-        for j in range(1, pagesize - 1):
-            now = xs[j]
-            prevv = xs[j - 1]
-            nextt = xs[j + 1]
-            # peak detected
-            if now > prevv and now > nextt:
-                # stored absolute value
-                peaks.append(now)
-        if len(peaks) == 0:
-            peaks.append(0)
-        peaks.sort()
-        peaks.reverse()
-        peaks = peaks[:int(pagesize * ratio / 100)]
-        return peaks
+        return Mode(xs, ys, zs)
 
 
 class Model(object):
     """
+    The base class which will analyze data into information.
 
+    :protected attributes:
+        model_name: model's name
+        page_size: the size of a window; a window generates a gap
     """
+    _PAGE_SIZE = 100
 
-    _FOLD_COUNT = 5
-    _SAMPLE_RATE = 20
+    def __init__(self, model_name=None, page_size=_PAGE_SIZE):
+        self._model_name = model_name
+        if model_name is None:
+            self._model_name = ""
+        self._page_size = page_size
 
-    def __init__(self, filename, labels):
-        self._filename = filename
-        self._labels = labels
-        self._mode = len(self._labels)
+    @property
+    def page_size(self):
+        return self._page_size
 
-        file_list = []
-        for i in range(self._mode):
-            file_list.append(filename + '_' + self._labels[i])
+    @abstractmethod
+    def save_to_file(self):
+        raise NotImplementedError("Please implement method \'save_to_file()\'.")
 
-        self._original_data = []
-        for i in range(self._mode):
-            self._original_data.append(Parser.read(file_list[i]))
-            if Parser.ORIGINAL_ZERO_ADJUST:
-                self._original_data[i] = Parser.do_zero_adjust(self._original_data[i])
-
-        self._raw_data = []
-        self._components = []
-        self._means = []
-        for i in range(self._mode):
-            result, mean, comp = Parser.parse(self._original_data[i])
-            # result, mean, comp = Parser.slice(self._original_data[i], 2)
-            self._raw_data.append(result)
-            self._means.append(mean)
-            self._components.append(comp)
-
-    def run(self):
-        # max_score = 0
-        # best_envelope = []
-        # xs, ys = None, None
-        # for offset in range(Model._FOLD_COUNT):
-        #     score, envelope, x, y = self.__validate(offset)
-        #     if score > max_score:
-        #         max_score, best_envelope, xs, ys = score, envelope, x, y
-        # print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
-        # PresentationModel.write_to_file(self._mode, self._means, self._components, xs, ys)
-
-        suffix = 'XYZ'
-        if Parser.MEAN_GAP_DIM == 3:
-            Drawer.plot_3d_scatter(self._raw_data, self._filename, self._labels, suffix)
-        else:
-            Drawer.plot_2d_scatter_mean_gap(self._raw_data, self._filename, self._labels, suffix)
-
-        # for i in range(self._mode):
-        #     Drawer.plot_2d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
-        # for i in range(self._mode):
-        #     Drawer.plot_3d_scatter_origin(self._original_data[i], i, self._filename, self._labels[i])
-        # for i in range(self._mode):
-        #     Drawer.draw_xyz(self._original_data[i], i, self._filename, self._labels[i], suffix)
-        Drawer.draw_line_chart(self._raw_data, self._filename, self._labels, suffix)
-
-    def run2(self, time_interval):
-        """
-        Consider after PCA
-
-        :param time_interval: time range in seconds
-        :return:
-        """
-        if self._mode > 1:
-            print('Error: Only accept at only 1 file.')
-            sys.exit(2)
-        train_data_list = []
-        train_data = []
-        for i in range(self._mode):
-            train_data.append(self._raw_data[i][:time_interval * Model._SAMPLE_RATE])
-            train_data_list.append(Parser.sliding(train_data[i]))
-        xs, ys = self.train(train_data_list)
-        gaps = []
-        for j in range(len(xs)):
-            gaps.append(xs[j][0])
-        mean = statistics.mean(gaps)
-        std = statistics.pstdev(gaps, mean)
-        PresentationModel.write_to_file2(self._means, self._components, mean, std)
-
-    def run3(self, time_interval):
-        """
-        Consider only one axis.
-
-        :param time_interval: time range in seconds
-        :return:
-        """
-        if self._mode > 1:
-            print('Error: Only accept at only 1 file.')
-            sys.exit(2)
-        now_max_gap = 0
-        now_max_gap_index = None
-        now_raw_data = None
-        for axis_index in range(3):
-            raw_data, _, _ = Parser.slice(self._original_data[0][:time_interval * Model._SAMPLE_RATE], axis_index)
-            raw_data = Parser.sliding(raw_data)
-            gaps = []
-            for k in range(len(raw_data)):
-                gaps.append(Parser.find_gaps(raw_data[k]))
-            gap = np.mean(gaps)
-            print(gap)
-            if gap > now_max_gap:
-                now_max_gap, now_max_gap_index, now_raw_data = gap, axis_index, raw_data
-        xs, ys = self.train([now_raw_data])
-        gaps = []
-        for j in range(len(xs)):
-            gaps.append(xs[j][0])
-        mean = statistics.mean(gaps)
-        print(mean)
-        std = statistics.pstdev(gaps, mean)
-        print(std)
-        Drawer.plot_envelope_prob(mean, std, gaps)
-
-        PresentationModel.write_to_file3(now_max_gap_index, self._means, self._components, mean, std)
-        print("!!!!!!!!!!! " + str(now_max_gap_index) + " !!!!!!!!!!!!!!!")
-
-    def train(self, train_data_list):
-        xs = []
-        ys = []
-        # split every file
-        for i in range(self._mode):
-            for k in range(len(train_data_list[i])):
-                gap = Parser.find_gaps(train_data_list[i][k])
-                xs.append([np.mean(gap)])
-                ys.append(i)
-        return xs, ys
-
-    def __validate(self, offset):
-        # pre-process
-        train_data_list = []
-        test_data_list = []
-        train_data = []
-        test_data = []
-
-        # read file
-        for i in range(self._mode):
-            cell_size = int(len(self._raw_data[i]) / Model._FOLD_COUNT)
-
-            train_data.append(np.concatenate([self._raw_data[i][:cell_size * offset],
-                                              self._raw_data[i][cell_size * (offset + 1):]]))
-            test_data.append(self._raw_data[i][cell_size * offset: cell_size * (offset + 1)])
-
-            train_data_list.append(Parser.sliding(train_data[i]))
-            test_data_list.append(Parser.sliding(test_data[i]))
-
-        xs, ys = self.train(train_data_list)
-
-        # predict block
-        clf = SVC(kernel='linear')
-        clf.fit(xs, ys)
-        score = []
-        envelope = []
-        for i in range(self._mode):
-            print('now at mode %d' % i)
-            result = []
-            gaps = []
-            res = 0
-            for j in range(len(test_data_list[i])):
-                gap = np.mean(Parser.find_gaps(test_data_list[i][j]))
-                # print(gap)
-                gaps.append(gap)
-                pd = Model.predict(gap, clf)
-                result.append(pd)
-                if pd == i:
-                    res += 1
-            # print(result)
-            res /= len(test_data_list[i])
-            print('success ratio = %.1f%%\n' % (res * 100))
-            score.append(res)
-            envelope.append((statistics.mean(gaps), statistics.variance(gaps)))
-        return np.mean(score), envelope, xs, ys
+    @abstractmethod
+    def predict(self, x):
+        raise NotImplementedError("Please implement method \'predict(x)\'.")
 
     @staticmethod
-    def predict(target_gap, clf):
-        return int(clf.predict([[target_gap]])[0])
+    def read_from_file(model_name):
+        """
+        Read the specific format from .in file to recover the model.
+
+        :param model_name: mode's file name
+        :return: the appropriate recovered model
+        """
+        fp = open(model_name + '.in', 'r')
+        model_type = fp.readline().strip()
+        page_size = int(fp.readline())
+        fp.close()
+
+        model = None
+        if model_type == 'SVMModel':
+            model = SVMModel(model_name, page_size)
+
+        if model_type == 'PMModel':
+            model = PMModel(model_name, page_size)
+
+        assert(model is not None)
+        model.read_from_file()
+        return model
+
+    def get_gap_time_series(self, mode):
+        """
+        Get gap curve for the mode by using this model's parameter.
+
+        :param mode: wanna be retrieved
+        :return: [gap1, gap2, ...]
+        """
+        assert(isinstance(mode, Mode))
+        raw_data = mode.time_series
+
+        peaks = []
+        valleys = []
+        gaps = []
+
+        # process the first window; i.e., the first PAGESIZE rows of data
+        for j in range(1, self._page_size - 1):
+            if raw_data[j] > raw_data[j - 1] and raw_data[j] > raw_data[j + 1]:
+                bisect.insort_left(peaks, raw_data[j], bisect.bisect_left(peaks, raw_data[j]))
+            elif raw_data[j] < raw_data[j - 1] and raw_data[j] < raw_data[j + 1]:
+                bisect.insort_left(valleys, raw_data[j], bisect.bisect_left(valleys, raw_data[j]))
+        gaps.append(self.__find_gaps(peaks, valleys))
+
+        # slide from start to end
+        for j in range(self._page_size, len(raw_data)):
+            s = j - self._page_size + 1
+            if raw_data[s] > raw_data[s - 1] and raw_data[s] > raw_data[s + 1]:
+                del peaks[bisect.bisect_left(peaks, raw_data[s])]
+            elif raw_data[s] < raw_data[s - 1] and raw_data[s] < raw_data[s + 1]:
+                del valleys[bisect.bisect_left(valleys, raw_data[s])]
+
+            e = j - 1
+            if raw_data[e] > raw_data[e - 1] and raw_data[e] > raw_data[e + 1]:
+                bisect.insort_left(peaks, raw_data[e], bisect.bisect_left(peaks, raw_data[e]))
+            elif raw_data[e] < raw_data[e - 1] and raw_data[e] < raw_data[e + 1]:
+                bisect.insort_left(valleys, raw_data[e], bisect.bisect_left(valleys, raw_data[e]))
+            gaps.append(self.__find_gaps(peaks, valleys))
+
+        assert(len(gaps) > 0)
+        return gaps
+
+    def __find_gaps(self, peaks, valleys):
+        """
+        Given lists of peak and valley, i.e., the window information , translate them into the feature "gap"
+
+        :param peaks: [peak1, peak2, ...]
+        :param valleys: [valley1, valley2, ...]
+        :return: gap
+        """
+        if len(peaks) == 0:
+            peaks = [0]
+        if len(valleys) == 0:
+            valleys = [0]
+        pos = int(self._page_size * 10.0 / 100.0)
+        peak_ave = np.mean(peaks[-pos:])
+        valley_ave = np.mean(valleys[:pos])
+        return peak_ave - valley_ave
+
+
+class SVMModel(Model):
+    """
+    The model identifying different modes by using SVM.
+
+    :attr mode_size: the total count of modes
+    :attr xs: train_X
+    :attr ys: predict_X
+    :attr clf: SVM classifier
+    """
+    __FOLD_COUNT = 5
+    __PAGE_SIZE = Model._PAGE_SIZE
+
+    def __init__(self, model_name, page_size=__PAGE_SIZE, fold_count=__FOLD_COUNT):
+        super(SVMModel, self).__init__(model_name, page_size)
+        self.__FOLD_COUNT = fold_count
+
+        self.__mode_size = 0
+
+        self.__xs, self.__ys = None, None
+        self.__clf = SVC(kernel='linear')
+
+    @property
+    def mode_size(self):
+        return self.__mode_size
+
+    def fit(self, mode_list):
+        """
+        Given a list of mode we wanna identify, this model will train automatically.
+
+        :param mode_list: [mode1, mode2, ...]
+        :return:
+        """
+        assert(isinstance(mode_list, list))
+        assert(isinstance(mode_list[0], Mode))
+        assert(len(mode_list) >= 2)
+
+        self.__xs, self.__ys = self.__build(mode_list)
+        self.__mode_size = len(mode_list)
+        self.__clf.fit(self.__xs, self.__ys)
+
+    def __build(self, mode_list):
+        """
+        Given a list of mode we wanna identify, this model will do __FOLD_COUNT-fold cross validation.
+
+        :param mode_list: [mode1, mode2, ...]
+        :return: [train_X], [predict_X]
+        """
+        max_score = 0
+        xs, ys = None, None
+        for offset in range(self.__FOLD_COUNT):
+            score, xs, ys = self.__validate(offset, mode_list)
+            if score > max_score:
+                max_score, xs, ys = score, xs, ys
+
+        print('optimal mean successful ratios = %.1f%%' % (max_score * 100))
+        return xs, ys
+
+    def __validate(self, offset, mode_list):
+        """
+        Split data into __FOLD_COUNT cells equally, then put "offset"-th cell as test data, otherwise as train data.
+
+        :param offset: #-th as test data
+        :param mode_list: [mode1, mode2, ...]
+        :return: accuracy, [train_X], [predict_X]
+        """
+        # pre-process
+        xs = []
+        ys = []
+        # read file
+        for i in range(len(mode_list)):
+            mode = mode_list[i]
+            raw_data = Model().get_gap_time_series(mode)
+            cell_size = int(len(raw_data) / self.__FOLD_COUNT)
+            gap_time_series = raw_data[:cell_size * offset] + raw_data[cell_size * (offset + 1):]
+            for gap in gap_time_series:
+                xs.append([gap])
+                ys.append(i)
+
+        clf = SVC(kernel='linear')
+        clf.fit(xs, ys)
+        return self.__validate_score(clf, offset, mode_list), xs, ys
+
+    def __validate_score(self, clf, offset, mode_list):
+        """
+        Given a specific validation method, calculate the performance score.
+
+        :param clf: classifier
+        :param offset: #-th as test data
+        :param mode_list: [mode1, mode2, ...]
+        :return: score
+        """
+
+        score = []
+        for i in range(len(mode_list)):
+            mode = mode_list[i]
+            raw_data = Model().get_gap_time_series(mode)
+            cell_size = int(len(raw_data) / self.__FOLD_COUNT)
+
+            # now at mode i
+            print('now at mode %d' % i)
+            gap_time_series = raw_data[cell_size * offset: cell_size * (offset + 1)]
+            result = []
+            hit = 0
+            for gap in gap_time_series:
+                y = clf.predict([[gap]])[0]
+                result.append(y)
+                if y == i:
+                    hit += 1
+            print(result)
+            hit_ratio = hit / len(gap_time_series)
+            print('success ratio = %.1f%%\n' % (hit_ratio * 100))
+            score.append(hit_ratio)
+        return np.mean(score)
+
+    def save_to_file(self):
+        """
+        Save the features.
+
+        :return:
+        """
+        fp = open(self._model_name + '.in', 'w')
+        fp.write('SVMModel\n')
+        fp.write(str(self._page_size) + '\n')
+        Parser.write_by_line(fp, self.__xs)
+        Parser.write_by_line(fp, self.__ys)
+        fp.close()
+
+    def read_from_file(self):
+        """
+        Whenever model's name is set, recover the model by reading the feature file.
+
+        :return:
+        """
+        fp = open(self._model_name + '.in', 'r')
+
+        # discard header
+        fp.readline()
+        fp.readline()
+
+        # read features
+        xs = []
+        ys = []
+        for token in fp.readline().split(','):
+            xs.append([float(token[1:-2])])
+        for token in fp.readline().split(','):
+            ys.append(int(token))
+
+        fp.close()
+
+        self.__xs, self.__ys = xs, ys
+        self.__clf.fit(xs, ys)
+        self.__mode_size = len(np.unique(ys))
+
+    def predict(self, x):
+        """
+        Return the classification of "x".
+
+        :param x: gap
+        :return: prediction
+        """
+        return self.__clf.predict(x)
+
+
+class PMModel(Model):
+    """
+    The model monitoring machine continuously to detect anomaly.
+
+    :private attributes:
+        sample_rate: # rows per every second
+        cof_k: the coefficient of k
+        components: the components applied in translating incoming data rows
+        mean: the mean value of the gap series from the mode
+        std: the standard deviation of the gap series from the mode
+    """
+    __PAGE_SIZE = Model._PAGE_SIZE
+    __SAMPLE_RATE = 20
+    __COF_K = 2
+
+    def __init__(self, model_name, page_size=__PAGE_SIZE, sample_rate=__SAMPLE_RATE, coef_k=__COF_K):
+        super(PMModel, self).__init__(model_name, page_size)
+        self.__sample_rate = sample_rate
+        self.__cof_k = coef_k
+        self.__components = None
+        self.__mean = None
+        self.__std = None
+
+    @property
+    def components(self):
+        return self.__components
+
+    def fit(self, mode, interval):
+        """
+        Consider the first "interval" seconds of data from "mode".
+
+        :param mode: normal mode of the machine
+        :param interval: retrieve # seconds from beginning as considered
+        :return:
+        """
+        assert(isinstance(mode, Mode))
+        assert(isinstance(interval, int))
+
+        x = mode.x[:interval * self.__sample_rate]
+        y = mode.y[:interval * self.__sample_rate]
+        z = mode.z[:interval * self.__sample_rate]
+        capture_mode = Mode(x, y, z)
+        self.__components = capture_mode.components
+        gap_time_series = self.get_gap_time_series(capture_mode)
+        self.__mean = statistics.mean(gap_time_series)
+        self.__std = statistics.pstdev(gap_time_series)
+
+    def save_to_file(self):
+        """
+        Save the features.
+
+        :return:
+        """
+        fp = open(self._model_name + '.in', 'w')
+
+        # place header
+        fp.write('PMModel\n')
+        fp.write(str(self._page_size) + '\n')
+
+        # place features
+        Parser.write_by_line(fp, self.__components[0])
+        fp.write(str(self.__mean) + '\n')
+        fp.write(str(self.__std) + '\n')
+
+        fp.close()
+
+    def read_from_file(self):
+        """
+        Whenever model's name is set, recover the model by reading the feature file.
+
+        :return:
+        """
+        fp = open(self._model_name + '.in', 'r')
+
+        # discard header
+        fp.readline()
+        fp.readline()
+
+        # read features
+        self.__components = []
+        for token in fp.readline().split(','):
+            self.__components.append(float(token))
+
+        self.__mean = float(fp.readline())
+        self.__std = float(fp.readline())
+
+    def predict(self, x):
+        """
+        Return the classification of "x".
+
+        :param x: gap
+        :return: {0 -> normal, 1 -> anomaly}
+        """
+        return 0 if abs(x - self.__mean) <= self.__cof_k * self.__std else 1
 
 
 class PresentationModel(object):
     """
+    The intermediate model to maintain I/O.
+
+    :protected attributes:
+        model: model's name
+        pool_size: the size of pool
+        buffer_size: the size of buffer
+        cache: reading data
     """
-    TRAINING_MODEL_FILE = 'motorcycle.txt'
     TARGET_FILE = 'prediction.txt'
 
     _POOL_SIZE = 20
     _BUFFER_SIZE = 20
 
-    def __init__(self, training_model_file, pool_size=_POOL_SIZE, buffer_size=_BUFFER_SIZE):
+    def __init__(self, model, pool_size=_POOL_SIZE, buffer_size=_BUFFER_SIZE):
+        self._model = model
         self._pool_size = pool_size
         self._buffer_size = buffer_size
+        self._cache = AnalogData(model.page_size)
 
-        # read feature to build SVM
-        fp = open(training_model_file, 'r')
-        self._mode = int(fp.readline())
+    @staticmethod
+    def apply(model):
+        """
+        Apply the appropriate model to operate by using factory design pattern.
 
-        self._components = []
-        for token in fp.readline().split(','):
-            self._components.append(float(token))
+        :param model: target model
+        :return: appropriate model
+        """
+        if isinstance(model, SVMModel):
+            return PresentationSVMModel(model)
+        if isinstance(model, PMModel):
+            return PresentationPMModel(model)
 
-        xs = []
-        ys = []
-        for token in fp.readline().split(','):
-            xs.append([float(token[1: -2])])
-        for token in fp.readline().split(','):
-            ys.append(int(token))
-        self._clf = SVC(kernel='linear')
-        self._clf.fit(xs, ys)
 
-        self._pool = deque([-1] * self._pool_size)
+class PresentationSVMModel(PresentationModel):
+    """
+    The intermediate SVMModel to maintain I/O.
+
+    :private attributes:
+        model: SVMModel
+        pool: pool buffer to vote
+        pool_count: how many the specific predictions have been output
+        mean_buffer: mean of gaps in the cache
+        now_mean: mean of gaps in the buffer now
+    """
+    __POOL_SIZE = PresentationModel._POOL_SIZE
+    __BUFFER_SIZE = PresentationModel._BUFFER_SIZE
+
+    def __init__(self, model, pool_size=__POOL_SIZE, buffer_size=__BUFFER_SIZE):
+        super(PresentationSVMModel, self).__init__(model, pool_size, buffer_size)
+
+        self.__model = model
+        self.__pool = deque([-1] * pool_size)
 
         # (mode0, mode1, ..~, modeNone)
-        self._pool_count = [0 for _ in range(self._mode)] + [self._pool_size]
+        self.__pool_count = [0 for _ in range(model.mode_size)] + [pool_size]
+        self.__mean_buffer = deque([0] * self._buffer_size)
+        self.__now_mean = 0
 
-        self._mean_buffer = deque([0] * self._buffer_size)
+    @property
+    def mean_buffer(self):
+        return self.__mean_buffer
 
-        self._now_mean = 0
+    @property
+    def now_mean(self):
+        return self.__now_mean
 
-        print(xs)
+    def add_to_pool(self, label):
+        """
+        Add prediction "label" to pool.
 
-    @staticmethod
-    def write_to_file(mode_count, components, xs, ys):
-        fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
-        fp.write(str(mode_count) + '\n')
-        PresentationModel.__write_by_line(fp, components)
-        PresentationModel.__write_by_line(fp, xs)
-        PresentationModel.__write_by_line(fp, ys)
-        fp.close()
+        :param label: prediction
+        :return:
+        """
+        assert(isinstance(label, int))
 
-    @staticmethod
-    def write_to_file2(means, components, mean, std):
-        fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
-        for i in range(len(means)):
-            PresentationModel.__write_by_line(fp, means[i])
-        for i in range(len(components)):
-            PresentationModel.__write_by_line(fp, components[i])
-        fp.write(str(mean) + '\n')
-        fp.write(str(std) + '\n')
-        fp.close()
+        if len(self.__pool) == self._POOL_SIZE:
+            x = self.__pool.pop()
+            self.__pool_count[x] -= 1
+            self.__pool.appendleft(label)
+        self.__pool_count[label] += 1
 
-    @staticmethod
-    def write_to_file3(index, means, components, mean, std):
-        fp = open(PresentationModel.TRAINING_MODEL_FILE, 'w')
-        fp.write(str(index) + '\n')
-        for i in range(len(means)):
-            PresentationModel.__write_by_line(fp, means[i])
-        for i in range(len(components)):
-            PresentationModel.__write_by_line(fp, components[i])
-        fp.write(str(mean) + '\n')
-        fp.write(str(std) + '\n')
-        fp.close()
+    def add_to_buffer(self, data):
+        """
+        Translate new data (x, y, z) and add it to the cache. Then update the buffer.
 
-    @staticmethod
-    def __write_by_line(fp, xs):
-        n = len(xs)
-        for i in range(n):
-            fp.write(str(xs[i]))
-            fp.write(',') if i < n - 1 else fp.write('\n')
+        :param data: (x, y, z)
+        :return:
+        """
+        assert(len(data) == 3)
+        assert(isinstance(data[0], float))
 
-    def add_to_pool(self, val):
-        if len(self._pool) == self._POOL_SIZE:
-            x = self._pool.pop()
-            self._pool_count[x] -= 1
-            self._pool.appendleft(val)
-        self._pool_count[val] += 1
+        self._cache.add(data)
+        data_list = self._cache.merge_to_list()
+        mode = Mode(data_list[0], data_list[1], data_list[2])
+        gaps = Model().get_gap_time_series(mode)
+        gap = np.mean(gaps)
 
-    def add_to_buffer(self, val):
-        if len(self._mean_buffer) == self._buffer_size:
-            x = self._mean_buffer.pop()
-            now_mean = (self._now_mean * self._buffer_size - x) / len(self._mean_buffer)
-        self._mean_buffer.appendleft(val)
-        self._now_mean = (self._now_mean * (len(self._mean_buffer) - 1) + val) / len(self._mean_buffer)
+        if len(self.__mean_buffer) == self._buffer_size:
+            x = self.__mean_buffer.pop()
+            self.__now_mean = (self.__now_mean * self._buffer_size - x) / len(self.__mean_buffer)
+        self.__mean_buffer.appendleft(gap)
+        self.__now_mean = (self.__now_mean * (len(self.__mean_buffer) - 1) + gap) / len(self.__mean_buffer)
 
     def take_result(self):
+        """
+        Return the most occurrence of label in the pool.
+
+        :return: label
+        """
         dic = []
-        for i in range(self._mode):
-            dic.append([self._pool_count[i], i])
-        dic.append([self._pool_count[self._mode], -1])
+        for i in range(self.__model.mode_size):
+            dic.append([self.__pool_count[i], i])
+        dic.append([self.__pool_count[self.__model.mode_size], -1])
         return max(dic)[1]
 
     def predict(self):
-        return Model.predict(self._now_mean, self._clf)
+        """
+        Return the prediction from the buffer by using this model.
+
+        :return: label
+        """
+        return int(self.__model.predict(self.__now_mean))
+
+
+class PresentationPMModel(PresentationModel):
+    """
+    The intermediate PMModel to maintain I/O.
+
+    :private attributes:
+        model: PMModel
+        now_gap: mean of gaps in the cache now
+    """
+    __POOL_SIZE = PresentationModel._POOL_SIZE
+    __BUFFER_SIZE = PresentationModel._BUFFER_SIZE
+
+    def __init__(self, model, pool_size=__POOL_SIZE, buffer_size=__BUFFER_SIZE):
+        super(PresentationPMModel, self).__init__(model, pool_size, buffer_size)
+        self.__model = model
+        self.__now_gap = None
+
+    def add(self, data):
+        """
+        Translate new data (x, y, z) and add it to the cache.
+
+        :param data: (x, y, z)
+        :return:
+        """
+        assert(len(data) == 3)
+        assert(isinstance(data[0], float))
+
+        self._cache.add(data)
+        data_list = self._cache.merge_to_list()
+        mode = Mode(data_list[0], data_list[1], data_list[2], self._model.components)
+        gap_time_series = self.__model.get_gap_time_series(mode)
+        self.__now_gap = np.mean(gap_time_series)
+
+    def predict(self):
+        """
+        Return the prediction from the cache by using this model.
+
+        :return: label
+        """
+        return int(self.__model.predict(self.__now_gap))
 
 
 class AnalogData(object):
     """
-    class that holds analog data for N samples
-    """
-    # con-str
-    def __init__(self, max_len):
-        self.ax = deque([0.0] * max_len)
-        self.ay = deque([0.0] * max_len)
-        self.az = deque([0.0] * max_len)
-        self.maxLen = max_len
+    Hold analog data for "max_len" samples.
 
-    # ring buffer
-    def add_tp_buf(self, buf, val):
-        if len(buf) < self.maxLen:
-            buf.append(val)
+    :private attributes:
+        ax: the buffer having acceleration at x-axis for "max_len" size
+        ay: the buffer having acceleration at y-axis for "max_len" size
+        az: the buffer having acceleration at z-axis for "max_len" size
+        max_len: the size of the deque structure
+    """
+    def __init__(self, max_len):
+        self.__ax = deque([0.0] * max_len)
+        self.__ay = deque([0.0] * max_len)
+        self.__az = deque([0.0] * max_len)
+        self.__max_len = max_len
+
+    def add(self, data):
+        """
+        Push data into the buffer.
+
+        :param data: (x, y, z)
+        :return:
+        """
+        assert(len(data) == 3)
+
+        self.__add_to_buf(self.__ax, data[0])
+        self.__add_to_buf(self.__ay, data[1])
+        self.__add_to_buf(self.__az, data[2])
+
+    def merge_to_list(self):
+        return [list(self.__ax), list(self.__ay), list(self.__az)]
+
+    def __add_to_buf(self, buf, val):
+        """
+        Add "val" to the newest position of deque "buf". If overflow, pop out the oldest position one.
+
+        :param buf: the one-axis buffer
+        :param val: original new value
+        :return:
+        """
+        if len(buf) < self.__max_len:
+            buf.appendleft(val)
         else:
             buf.pop()
             buf.appendleft(val)
-
-    # add data
-    def add(self, data):
-        assert(len(data) == 3)
-        self.add_tp_buf(self.ax, data[0])
-        self.add_tp_buf(self.ay, data[1])
-        self.add_tp_buf(self.az, data[2])
-
-    def merge_to_list(self):
-        tmps = [[], [], []]
-        tmps[0] = list(self.ax)
-        tmps[1] = list(self.ay)
-        tmps[2] = list(self.az)
-        return tmps
-
-
-class Drawer(object):
-
-    COLORS = ['blue', 'orange', 'green', 'red']
-
-    @staticmethod
-    def plot_envelope_prob(mean, std, gaps):
-        xs = []
-        ys = []
-        for K in range(0, 50 + 1, 2):
-            K /= 10
-            hit = 0
-            for j in range(len(gaps)):
-                if abs(gaps[j] - mean) <= K * std:
-                    hit += 1
-            hit_ratio = hit / len(gaps)
-            xs.append(K)
-            ys.append(hit_ratio)
-
-        df = pd.DataFrame(data={
-            'K': xs,
-            'hitRatio': ys
-        })
-        print(df)
-        f, ax = plt.subplots(1, 1)
-        ax.set_title('Probability of gaps dropping within range(motor_0504_4Y7M_2_HOOK)')
-        sns.pointplot('K', 'hitRatio', data=df, title='sss')
-        plt.savefig('hitRatio(motor_0504_4Y7M_2_HOOK)240s.png')
-        plt.show()
-
-    @staticmethod
-    def plot_2d_scatter_origin(raw_data, index, title='', suffix=''):
-        # pre-process
-        dim = len(raw_data)
-
-        rd = [[], [], []]
-        for k in range(dim):
-            for j in range(3):
-                rd[j].append(raw_data[k][j])
-
-        marks = ['X', 'Y', 'Z']
-        for i in range(3):
-            for j in range(i + 1, 3):
-                fig, ax = plt.subplots()
-                x_label = 'acceleration at ' + marks[i] + ' axis (mg)'
-                y_label = 'acceleration at ' + marks[j] + ' axis (mg)'
-                plt.xlabel(x_label)
-                plt.ylabel(y_label)
-                ax.set_title('Scatters of Original Data in 2D (' + title + '_' + suffix + ')'
-                             + '[' + marks[i] + marks[j] + ']')
-                x = rd[i]
-                y = rd[j]
-                plt.scatter(x, y, label=marks[i] + marks[j], color=Drawer.COLORS[index], alpha=0.2)
-                ax.legend()
-                plt.savefig(title + '_' + suffix + '[' + marks[i] + marks[j] + ']' + '2d.png')
-
-    @staticmethod
-    def plot_2d_scatter_mean_gap(raw_data, title='', labels=[], suffix=''):
-        fig, ax = plt.subplots()
-        plt.xlabel('meanGap1 (mg)')
-        plt.ylabel('meanGap2 (mg)')
-        ax.set_title('Scatters of Mean Gaps in 2D (' + title + ')' + '[' + suffix + ']')
-
-        # pre-process
-        dim = len(raw_data)
-        data_list = []
-        for i in range(dim):
-            data_list.append(Parser.sliding(raw_data[i]))
-
-        for i in range(dim):
-            gap_list = []
-            for k in range(len(data_list[i])):
-                gap_list.append(Parser.find_gaps(data_list[i][k]))
-
-            now_list = [[], []]
-            for j in range(len(gap_list)):
-                for k in range(2):
-                    now_list[k].append(gap_list[j][k])
-
-            plt.scatter(now_list[0], now_list[1], label=labels[i])
-
-        ax.legend()
-
-        plt.savefig(title + '[' + suffix + ']' + '2D-mean-gap.png')
-        # plt.show()
-
-    @staticmethod
-    def plot_3d_scatter_origin(raw_data, index, title='', suffix=''):
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        # pre-process
-        dim = len(raw_data)
-        data_list = []
-        for i in range(dim):
-            data_list.append(Parser.sliding(raw_data[i]))
-
-        ax.set_xlabel('acceleration at X axis (mg)')
-        ax.set_ylabel('acceleration at Y axis (mg)')
-        ax.set_zlabel('acceleration at Z axis (mg)')
-        ax.set_title('Scatters of Original Data in 3D (' + title + '_' + suffix + ')')
-
-        rd = [[], [], []]
-        for k in range(len(raw_data)):
-            for j in range(3):
-                rd[j].append(raw_data[k][j])
-
-        ax.scatter(rd[0], rd[1], rd[2], color=Drawer.COLORS[index], label='XYZ')
-
-        ax.legend()
-
-        plt.savefig(title + '[' + suffix + ']' + '3D-origin.png')
-        # plt.show()
-
-    @staticmethod
-    def plot_3d_scatter(raw_data, title='', labels=[], suffix=''):
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        # pre-process
-        dim = len(raw_data)
-        data_list = []
-        for i in range(dim):
-            data_list.append(Parser.sliding(raw_data[i]))
-
-        ax.set_xlabel('meanGap1 (mg)')
-        ax.set_ylabel('meanGap2 (mg)')
-        ax.set_zlabel('meanGap3 (mg)')
-        ax.set_title('Scatters of Mean Gaps in 3D (' + title + ')' + '[' + suffix + ']')
-
-        for i in range(dim):
-            gap_list = []
-            for k in range(len(data_list[i])):
-                gap_list.append(Parser.find_gaps(data_list[i][k]))
-
-            now_list = [[], [], []]
-            for j in range(len(gap_list)):
-                for k in range(3):
-                    now_list[k].append(gap_list[j][k])
-
-            ax.scatter(now_list[0], now_list[1], now_list[2], color=Drawer.COLORS[i], label=labels[i])
-
-        ax.legend()
-        # plt.show()
-
-    @staticmethod
-    def draw_xyz(raw_data, index, filename='', label='', suffix=''):
-        x_label = 'time_stamp (s/20)'
-        y_label = 'acceleration (mg)'
-        title = 'Original Data of X,Y,Z (' + filename + '_' + label + ') [' + suffix + ']'
-
-        fig, ax = plt.subplots(3, sharex='all', sharey='all')
-
-        rd = [[], [], []]
-        for k in range(len(raw_data)):
-            for j in range(3):
-                rd[j].append(raw_data[k][j])
-
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
-        # plt.ylim(-50, 50)
-        ax[0].set_title(title)
-
-        axis_labels = ['X', 'Y', 'Z']
-        for i in range(3):
-            x = np.arange(0, len(rd[i]))
-            y = rd[i]
-
-            ax[i].plot(x, y, color=Drawer.COLORS[index], label=axis_labels[i])
-            ax[i].legend()
-
-        plt.savefig(title + 'xyz.png')
-        # plt.show()
-
-    @staticmethod
-    def draw_line_chart(raw_data, filename='', labels=[], suffix=''):
-        title = 'PCA Value (' + filename + ') [' + suffix + ']'
-        fig, ax = plt.subplots()
-
-        data_list = []
-        # pre-process
-        for i in range(len(raw_data)):
-            data_list.append(Parser.sliding(raw_data[i]))
-
-        plt.xlabel('time_stamp (20/s)')
-        plt.ylabel('PCA_value (mg)')
-
-        for i in range(len(raw_data)):
-            peaks_list = []
-            valleys_list = []
-            for k in range(len(data_list[i])):
-                fragment = data_list[i][k]
-                peaks = Parser.find_peaks_sorted(fragment)
-                valleys = Parser.find_valley_sorted(fragment)
-                if len(peaks) == 0:
-                    peaks.append(0)
-                if len(valleys) == 0:
-                    valleys.append(0)
-                peaks_list.append(np.mean(peaks))
-                valleys_list.append(np.mean(valleys))
-
-            X = np.arange(0, len(peaks_list))
-            ax.plot(X, peaks_list, label='peak_' + labels[i], color=Drawer.COLORS[i])
-            ax.plot(X, valleys_list, '--', label='valley_' + labels[i], color=Drawer.COLORS[i])
-        ax.legend()
-        ax.set_title(title)
-
-        plt.savefig(title + 'line_chart.png')
-        # plt.show()
