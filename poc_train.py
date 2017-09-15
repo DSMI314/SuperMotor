@@ -15,10 +15,13 @@ def main(argv):
     print('>> The machine is training (using SVM)...')
     timer_start = timeit.default_timer()
 
+    # prepare
     mode_list = []
     for suffix in argv[1:]:
         mode = Mode.read_csv(file_name + '_' + suffix)
         mode_list.append(mode)
+
+    # build
     model = SVMModel(file_name)
     model.fit(mode_list)
     model.save_to_file()
