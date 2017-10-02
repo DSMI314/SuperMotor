@@ -7,6 +7,8 @@ from abc import abstractmethod
 from sklearn import decomposition
 from sklearn.svm import SVC
 
+from memory_profiler import profile
+
 
 class Parser(object):
     """
@@ -39,6 +41,7 @@ class Mode(object):
         components: the components when wanna combine x,y,z into time_series
         mean: the mean vector of (x,y,z)
     """
+    @profile
     def __init__(self, x, y, z, components=None):
         assert(len(x) == len(y) and len(y) == len(z))
         self.__x = x
@@ -68,7 +71,20 @@ class Mode(object):
     def time_series(self):
         return self.__time_series
 
+    @property
+    def x(self):
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
+
+    @property
+    def z(self):
+        return self.__z
+
     @staticmethod
+    @profile
     def read_csv(file_name):
         """
         Read data from specific format .csv file

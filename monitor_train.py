@@ -1,10 +1,10 @@
 import sys
 from lib import Mode, PMModel
-from memory_profiler import profile
+from memory_profiler import profile, memory_usage
 import timeit
 
 
-# @profile
+@profile
 def main(argv):
     if len(argv) == 0:
         print('Error: Please give a filename as a parameter')
